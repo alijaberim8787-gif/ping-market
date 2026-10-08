@@ -27,10 +27,14 @@ jobs:
       - name: Create Android platform
         run: flutter create . --platforms=android --project-name=ping_market
 
-      - name: Fix Kotlin version
+      - name: Fix AGP and Kotlin versions
         run: |
+          # آپدیت AGP به 8.5.2
+          sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
+          # آپدیت Kotlin
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
-          sed -i "s/ext.kotlin_version = '.*'/ext.kotlin_version = '2.4.20'/" android/build.gradle
+          # آپدیت نسخه Gradle wrapper
+          sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Build APK
         run: flutter build apk --release
