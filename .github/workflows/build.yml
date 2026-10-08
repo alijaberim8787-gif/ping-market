@@ -27,6 +27,11 @@ jobs:
       - name: Create Android platform
         run: flutter create . --platforms=android --project-name=ping_market
 
+      - name: Fix Kotlin version
+        run: |
+          sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
+          sed -i "s/ext.kotlin_version = '.*'/ext.kotlin_version = '2.4.20'/" android/build.gradle
+
       - name: Build APK
         run: flutter build apk --release
 
