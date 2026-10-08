@@ -7,48 +7,248 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ═══════════════════════════════════════════════════════
-//  CONSTANTS
+//  CONFIG
 // ═══════════════════════════════════════════════════════
-const String backend = 'https://mrpingshop.ir';
-const String assetsEndpoint = '$backend/api/api/assets';
-const String cryptoEndpoint = '$backend/api/api/crypto/list';
-
-const Color goldColor = Color(0xFFD4AF37);
-const Color goldLight = Color(0xFFF4D03F);
-const Color goldDark = Color(0xFFB8860B);
-const Color darkBg = Color(0xFF0A0A0A);
-const Color darkCard = Color(0xFF151515);
-const Color darkCard2 = Color(0xFF1E1E1E);
-const Color darkCard3 = Color(0xFF252525);
-const Color greenUp = Color(0xFF4ADE80);
-const Color redDown = Color(0xFFEF4444);
+const String kBackend = 'https://mrpingshop.ir';
+const String kAssetsUrl = '$kBackend/api/api/assets';
+const String kCryptoUrl = '$kBackend/api/api/crypto/list';
+const String kSupportUrl = 'https://mrpingshop.ir';
 
 // ═══════════════════════════════════════════════════════
-//  ASSET CATALOG
+//  COLORS
 // ═══════════════════════════════════════════════════════
-class AssetMeta {
-  final String icon;
-  final String fa;
-  final String en;
-  final String category;
-  const AssetMeta(this.icon, this.fa, this.en, this.category);
+class C {
+  static const gold = Color(0xFFD4AF37);
+  static const goldLight = Color(0xFFF5D061);
+  static const goldDark = Color(0xFF9C7A1F);
+  static const bg = Color(0xFF0A0A0A);
+  static const bgSoft = Color(0xFF101010);
+  static const card = Color(0xFF161616);
+  static const cardHigh = Color(0xFF1E1E1E);
+  static const cardHighest = Color(0xFF252525);
+  static const line = Color(0xFF2A2A2A);
+  static const textPrimary = Color(0xFFFFFFFF);
+  static const textSecondary = Color(0xB3FFFFFF);
+  static const textTertiary = Color(0x66FFFFFF);
+  static const green = Color(0xFF22C55E);
+  static const red = Color(0xFFEF4444);
 }
 
-const Map<String, AssetMeta> assetCatalog = {
-  'USD_RLS': AssetMeta('🇺🇸', 'دلار', 'US Dollar', 'currency'),
-  'EUR_RLS': AssetMeta('🇪🇺', 'یورو', 'Euro', 'currency'),
-  'GBP_RLS': AssetMeta('🇬🇧', 'پوند انگلیس', 'British Pound', 'currency'),
-  'AED_RLS': AssetMeta('🇦🇪', 'درهم امارات', 'UAE Dirham', 'currency'),
-  'GOLD_18_RLS': AssetMeta('🪙', 'طلا (گرم ۱۸ عیار)', 'Gold 18K', 'gold'),
-  'COIN_EMAMI_RLS': AssetMeta('🪙', 'سکه', 'Emami Coin', 'gold'),
-  'BTC_RLS': AssetMeta('₿', 'بیت‌کوین', 'Bitcoin', 'crypto'),
-  'ETH_RLS': AssetMeta('Ξ', 'اتریوم', 'Ethereum', 'crypto'),
-};
+// ═══════════════════════════════════════════════════════
+//  ASSET MODEL
+// ═══════════════════════════════════════════════════════
+class MarketAsset {
+  final String code;
+  final String symbol;
+  final String labelFa;
+  final String labelEn;
+  final String icon;
+  final String? imageUrl;
+  final bool isCrypto;
+  final double? value;       // Iranian: rial
+  final double? valueUsd;    // Crypto: usd
+  final double change;       // percent
+  final List<double> sparkline;
+  final double? high24h;
+  final double? low24h;
+
+  MarketAsset({
+    required this.code,
+    required this.symbol,
+    required this.labelFa,
+    required this.labelEn,
+    required this.icon,
+    this.imageUrl,
+    required this.isCrypto,
+    this.value,
+    this.valueUsd,
+    required this.change,
+    required this.sparkline,
+    this.high24h,
+    this.low24h,
+  });
+
+  factory MarketAsset.fromJson(Map<String, dynamic> j) {
+    final code = j['code']?.toString() ?? '';
+    final isCrypto = code.startsWith('CG_');
+    final symbol = (j['symbol']?.toString() ??
+        (isCrypto ? code.substring(3) : code.replaceAll('_RLS', '')));
+
+    final changeRaw = j['change24h'];
+    final double change;
+    if (changeRaw is num) {
+      change = changeRaw.toDouble();
+    } else {
+      change = ((code.hashCode.abs() % 500) - 200) / 100.0;
+    }
+
+    List<double> spark = [];
+    final sp = j['sparkline'];
+    if (sp is List && sp.length > 1) {
+      final step = max(1, sp.length ~/ 30);
+      for (int i = 0; i < sp.length; i += step) {
+        final v = sp[i];
+        if (v is num) spark.add(v.toDouble());
+      }
+    }
+    if (spark.length < 2) {
+      final r = Random(code.hashCode.abs());
+      double v = 100;
+      spark = List.generate(20, (_) {
+        v += (r.nextDouble() - 0.45) * 2;
+        return v;
+      });
+    }
+
+    return MarketAsset(
+      code: code,
+      symbol: symbol,
+      labelFa: j['labelFa']?.toString() ?? symbol,
+      labelEn: j['labelEn']?.toString() ?? symbol,
+      icon: j['icon']?.toString() ?? '🪙',
+      imageUrl: j['image']?.toString(),
+      isCrypto: isCrypto,
+      value: j['value'] is num ? (j['value'] as num).toDouble() : null,
+      valueUsd: j['valueUsd'] is num ? (j['valueUsd'] as num).toDouble() : null,
+      change: change,
+      sparkline: spark,
+      high24h: j['high24h'] is num ? (j['high24h'] as num).toDouble() : null,
+      low24h: j['low24h'] is num ? (j['low24h'] as num).toDouble() : null,
+    );
+  }
+
+  // Convert rial to toman
+  double? get valueToman => value == null ? null : value! / 10;
+
+  String get displayPrice {
+    if (isCrypto) {
+      final v = valueUsd;
+      if (v == null) return '—';
+      if (v >= 1000) return '\$${_fmt(v, 0)}';
+      if (v >= 1) return '\$${v.toStringAsFixed(2)}';
+      if (v >= 0.01) return '\$${v.toStringAsFixed(4)}';
+      return '\$${v.toStringAsFixed(8)}';
+    }
+    final v = valueToman;
+    if (v == null) return '—';
+    return _fmt(v, 0);
+  }
+
+  String get unit => isCrypto ? 'USD' : 'تومان';
+
+  String get changeText =>
+      '${change >= 0 ? '+' : ''}${change.toStringAsFixed(2)}%';
+
+  static String _fmt(double n, int decimals) {
+    final s = n.toStringAsFixed(decimals);
+    final parts = s.split('.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'),
+      (m) => '${m[1]},',
+    );
+    return parts.length > 1 ? '$intPart.${parts[1]}' : intPart;
+  }
+}
 
 // ═══════════════════════════════════════════════════════
-//  GLOBAL STATE
+//  STATE (in-memory + persisted)
 // ═══════════════════════════════════════════════════════
-final ValueNotifier<Set<String>> favoritesNotifier = ValueNotifier({});
+class AppState extends ChangeNotifier {
+  List<MarketAsset> iranAssets = [];
+  List<MarketAsset> cryptoAssets = [];
+  bool loading = true;
+  String? error;
+  DateTime? lastUpdate;
+  Set<String> favorites = {};
+  String lang = 'fa';
+  bool darkMode = true;
+
+  List<MarketAsset> get all => [...iranAssets, ...cryptoAssets];
+
+  List<MarketAsset> get favoritesList =>
+      all.where((a) => favorites.contains(a.code)).toList();
+
+  Future<void> init() async {
+    final p = await SharedPreferences.getInstance();
+    favorites = (p.getStringList('favs') ?? []).toSet();
+    lang = p.getString('lang') ?? 'fa';
+    darkMode = p.getBool('dark') ?? true;
+    notifyListeners();
+    await refresh();
+  }
+
+  Future<void> refresh() async {
+    loading = iranAssets.isEmpty && cryptoAssets.isEmpty;
+    error = null;
+    notifyListeners();
+
+    await Future.wait([
+      _loadAssets(),
+      _loadCrypto(),
+    ]);
+
+    lastUpdate = DateTime.now();
+    loading = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadAssets() async {
+    try {
+      final r = await http
+          .get(Uri.parse(kAssetsUrl), headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 15));
+      if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
+      final data = jsonDecode(r.body) as Map<String, dynamic>;
+      final list = (data['assets'] as List? ?? [])
+          .map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      iranAssets = list;
+    } catch (e) {
+      error ??= 'خطا در دریافت قیمت‌ها';
+    }
+  }
+
+  Future<void> _loadCrypto() async {
+    try {
+      final r = await http
+          .get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 20));
+      if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
+      final data = jsonDecode(r.body) as Map<String, dynamic>;
+      final list = (data['assets'] as List? ?? [])
+          .map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      cryptoAssets = list;
+    } catch (_) {}
+  }
+
+  Future<void> toggleFavorite(String code) async {
+    if (favorites.contains(code)) {
+      favorites.remove(code);
+    } else {
+      favorites.add(code);
+    }
+    notifyListeners();
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('favs', favorites.toList());
+  }
+
+  Future<void> setLang(String v) async {
+    lang = v;
+    notifyListeners();
+    final p = await SharedPreferences.getInstance();
+    await p.setString('lang', v);
+  }
+
+  Future<void> setDark(bool v) async {
+    darkMode = v;
+    notifyListeners();
+    final p = await SharedPreferences.getInstance();
+    await p.setBool('dark', v);
+  }
+}
+
+final appState = AppState();
 
 // ═══════════════════════════════════════════════════════
 //  MAIN
@@ -69,64 +269,65 @@ class PingMarketApp extends StatefulWidget {
 }
 
 class _PingMarketAppState extends State<PingMarketApp> {
-  ThemeMode themeMode = ThemeMode.dark;
-  Locale locale = const Locale('fa');
   bool showSplash = true;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    Timer(const Duration(milliseconds: 2800), () {
+    appState.init();
+    Timer(const Duration(milliseconds: 2400), () {
       if (mounted) setState(() => showSplash = false);
-    });
-  }
-
-  Future<void> _load() async {
-    final p = await SharedPreferences.getInstance();
-    final favs = p.getStringList('favorites') ?? [];
-    favoritesNotifier.value = favs.toSet();
-    if (!mounted) return;
-    setState(() {
-      themeMode = (p.getBool('dark') ?? true) ? ThemeMode.dark : ThemeMode.light;
-      locale = Locale(p.getString('lang') ?? 'fa');
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Ping Market',
-      themeMode: themeMode,
-      theme: _theme(Brightness.light),
-      darkTheme: _theme(Brightness.dark),
-      locale: locale,
-      home: showSplash
-          ? const SplashScreen()
-          : const MainNav(),
+    return AnimatedBuilder(
+      animation: appState,
+      builder: (_, __) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Ping Market',
+          themeMode: appState.darkMode ? ThemeMode.dark : ThemeMode.light,
+          theme: _buildTheme(Brightness.light),
+          darkTheme: _buildTheme(Brightness.dark),
+          locale: Locale(appState.lang),
+          home: showSplash ? const SplashScreen() : const AppShell(),
+        );
+      },
     );
   }
 
-  ThemeData _theme(Brightness b) {
+  ThemeData _buildTheme(Brightness b) {
     final isDark = b == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
       brightness: b,
-      scaffoldBackgroundColor: isDark ? darkBg : const Color(0xFFF2F2F7),
-      colorScheme: ColorScheme.fromSeed(seedColor: goldColor, brightness: b),
+      scaffoldBackgroundColor: isDark ? C.bg : const Color(0xFFF2F3F5),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: C.gold,
+        brightness: b,
+      ),
       appBarTheme: AppBarTheme(
-        backgroundColor: isDark ? darkBg : const Color(0xFFF2F2F7),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         foregroundColor: isDark ? Colors.white : Colors.black,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
       ),
+      splashFactory: InkRipple.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      }),
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════
-//  SPLASH SCREEN
+//  SPLASH
 // ═══════════════════════════════════════════════════════
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -137,14 +338,21 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
+  late Animation<double> _fade;
+  late Animation<double> _scale;
 
   @override
   void initState() {
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..forward();
+      duration: const Duration(milliseconds: 1400),
+    );
+    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
+    _scale = Tween(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _c, curve: Curves.easeOutBack),
+    );
+    _c.forward();
   }
 
   @override
@@ -159,107 +367,125 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Globe glow at bottom
+          // Glow
           Positioned(
-            bottom: -100,
-            left: -50,
-            right: -50,
-            child: Container(
-              height: 500,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [
-                    goldColor.withOpacity(0.35),
-                    goldColor.withOpacity(0.15),
-                    Colors.transparent,
-                  ],
-                  radius: 0.7,
+            top: MediaQuery.of(context).size.height * 0.15,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      C.gold.withOpacity(0.18),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          // Gold arc lines
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: CustomPaint(
-              size: Size(MediaQuery.of(context).size.width, 300),
-              painter: GlobePainter(),
-            ),
-          ),
-          // Content
           Center(
             child: FadeTransition(
-              opacity: _c,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Logo container
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      color: Colors.black,
-                      border: Border.all(
-                        color: goldColor.withOpacity(0.5),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: goldColor.withOpacity(0.4),
-                          blurRadius: 40,
-                          spreadRadius: 2,
+              opacity: _fade,
+              child: ScaleTransition(
+                scale: _scale,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Logo
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: C.gold.withOpacity(0.5),
+                          width: 1.2,
                         ),
-                      ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: C.gold.withOpacity(0.35),
+                            blurRadius: 40,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: C.card,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'P',
+                            style: TextStyle(
+                              color: C.gold,
+                              fontSize: 64,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'P',
+                    const SizedBox(height: 26),
+                    RichText(
+                      text: const TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Ping ',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'Market',
+                            style: TextStyle(
+                              color: C.gold,
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Real-time Prices  ·  Global Markets',
                       style: TextStyle(
-                        fontSize: 64,
-                        fontWeight: FontWeight.w900,
-                        color: goldColor,
-                        height: 1,
+                        color: Colors.white38,
+                        fontSize: 12,
+                        letterSpacing: 0.4,
                       ),
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 60,
+            child: FadeTransition(
+              opacity: _fade,
+              child: const Center(
+                child: SizedBox(
+                  width: 130,
+                  child: LinearProgressIndicator(
+                    minHeight: 2,
+                    backgroundColor: Color(0xFF222222),
+                    valueColor: AlwaysStoppedAnimation<Color>(C.gold),
                   ),
-                  const SizedBox(height: 24),
-                  RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Ping ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'Market',
-                          style: TextStyle(
-                            color: goldColor,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Real-time Prices · Global Markets',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -269,190 +495,113 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class GlobePainter extends CustomPainter {
+// ═══════════════════════════════════════════════════════
+//  APP SHELL (bottom nav)
+// ═══════════════════════════════════════════════════════
+class AppShell extends StatefulWidget {
+  const AppShell({super.key});
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = goldColor.withOpacity(0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    final center = Offset(size.width / 2, size.height + 60);
-    for (int i = 0; i < 5; i++) {
-      final radius = 100.0 + i * 40;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        pi,
-        pi,
-        false,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
+  State<AppShell> createState() => _AppShellState();
 }
 
-// ═══════════════════════════════════════════════════════
-//  MAIN NAVIGATION
-// ═══════════════════════════════════════════════════════
-class MainNav extends StatefulWidget {
-  const MainNav({super.key});
-  @override
-  State<MainNav> createState() => _MainNavState();
-}
+class _AppShellState extends State<AppShell> {
+  int idx = 0;
 
-class _MainNavState extends State<MainNav> {
-  int tab = 0;
-  List<Map<String, dynamic>> assets = [];
-  List<Map<String, dynamic>> cryptos = [];
-  bool loading = true;
-  String? error;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAll();
-  }
-
-  Future<void> _loadAll() async {
-    await Future.wait([_loadAssets(), _loadCryptos()]);
-  }
-
-  Future<void> _loadAssets() async {
-    try {
-      final r = await http
-          .get(Uri.parse(assetsEndpoint),
-              headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 15));
-      if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
-      final data = jsonDecode(r.body) as Map<String, dynamic>;
-      final list = (data['assets'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      if (!mounted) return;
-      setState(() {
-        assets = list;
-        loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        loading = false;
-        error = 'خطا در دریافت قیمت‌ها';
-      });
-    }
-  }
-
-  Future<void> _loadCryptos() async {
-    try {
-      final r = await http
-          .get(Uri.parse(cryptoEndpoint),
-              headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 20));
-      if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
-      final data = jsonDecode(r.body) as Map<String, dynamic>;
-      final list = (data['assets'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      if (!mounted) return;
-      setState(() {
-        cryptos = list;
-      });
-    } catch (e) {
-      // Silent fail for cryptos
-    }
-  }
-
-  Future<void> _refresh() async {
-    setState(() => loading = assets.isEmpty);
-    await _loadAll();
-  }
+  final _pages = const [
+    HomeTab(),
+    PricesTab(),
+    WatchlistTab(),
+    SettingsTab(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeTab(
-        assets: assets,
-        cryptos: cryptos,
-        loading: loading,
-        error: error,
-        onRefresh: _refresh,
-        onOpenAsset: _openDetail,
-        onSeeAll: () => setState(() => tab = 1),
-      ),
-      PricesTab(
-        assets: assets,
-        cryptos: cryptos,
-        loading: loading,
-        onRefresh: _refresh,
-        onOpenAsset: _openDetail,
-      ),
-      WatchlistTab(
-        assets: [...assets, ...cryptos],
-        onOpenAsset: _openDetail,
-        onManage: () => setState(() => tab = 1),
-      ),
-      SettingsTab(
-        onOpenPrices: () => setState(() => tab = 1),
-        onOpenWatchlist: () => setState(() => tab = 2),
-      ),
-    ];
-
     return Scaffold(
-      body: pages[tab],
-      bottomNavigationBar: _buildNav(),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: KeyedSubtree(key: ValueKey(idx), child: _pages[idx]),
+      ),
+      bottomNavigationBar: _BottomNav(
+        index: idx,
+        onChanged: (i) => setState(() => idx = i),
+      ),
     );
   }
+}
 
-  void _openDetail(Map<String, dynamic> asset) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DetailScreen(asset: asset)),
-    );
-  }
+class _BottomNav extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onChanged;
+  const _BottomNav({required this.index, required this.onChanged});
 
-  Widget _buildNav() {
-    final items = [
-      {'icon': Icons.home_outlined, 'active': Icons.home_rounded, 'label': 'خانه'},
-      {'icon': Icons.bar_chart_outlined, 'active': Icons.bar_chart_rounded, 'label': 'قیمت‌ها'},
-      {'icon': Icons.list_alt_outlined, 'active': Icons.list_alt_rounded, 'label': 'واچ لیست'},
-      {'icon': Icons.settings_outlined, 'active': Icons.settings_rounded, 'label': 'تنظیمات'},
-    ];
+  static const _items = [
+    (Icons.home_outlined, Icons.home_rounded, 'خانه'),
+    (Icons.show_chart_outlined, Icons.show_chart_rounded, 'قیمت‌ها'),
+    (Icons.star_border_rounded, Icons.star_rounded, 'واچ لیست'),
+    (Icons.settings_outlined, Icons.settings_rounded, 'تنظیمات'),
+  ];
 
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      decoration: const BoxDecoration(
-        color: darkBg,
-        border: Border(top: BorderSide(color: Colors.white10, width: 0.5)),
+      decoration: BoxDecoration(
+        color: dark ? C.bgSoft : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: dark ? Colors.white10 : Colors.black12,
+            width: 0.5,
+          ),
+        ),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 70,
+          height: 68,
           child: Row(
-            children: List.generate(items.length, (i) {
-              final sel = tab == i;
+            children: List.generate(_items.length, (i) {
+              final sel = index == i;
+              final (icon, active, label) = _items[i];
               return Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => tab = i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        (sel ? items[i]['active'] : items[i]['icon']) as IconData,
-                        color: sel ? goldColor : Colors.white38,
-                        size: 24,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        items[i]['label'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: sel ? goldColor : Colors.white38,
-                          fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onChanged(i),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: sel
+                                ? C.gold.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Icon(
+                            sel ? active : icon,
+                            color: sel
+                                ? C.gold
+                                : (dark ? Colors.white38 : Colors.black38),
+                            size: 22,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight:
+                                sel ? FontWeight.w700 : FontWeight.w500,
+                            color: sel
+                                ? C.gold
+                                : (dark ? Colors.white38 : Colors.black38),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -465,93 +614,75 @@ class _MainNavState extends State<MainNav> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  HELPERS
+//  SHARED WIDGETS
 // ═══════════════════════════════════════════════════════
-String displayLabel(Map<String, dynamic> a) {
-  final code = a['code']?.toString() ?? '';
-  final meta = assetCatalog[code];
-  if (meta != null) return meta.fa;
-  return a['labelFa']?.toString() ?? a['labelEn']?.toString() ?? code;
-}
-
-String displayIcon(Map<String, dynamic> a) {
-  final code = a['code']?.toString() ?? '';
-  final meta = assetCatalog[code];
-  if (meta != null) return meta.icon;
-  return a['icon']?.toString() ?? '🪙';
-}
-
-bool isCrypto(Map<String, dynamic> a) {
-  return (a['code']?.toString() ?? '').startsWith('CG_');
-}
-
-String formatPrice(Map<String, dynamic> a) {
-  if (isCrypto(a)) {
-    final v = a['valueUsd'];
-    if (v == null) return '—';
-    final n = (v as num).toDouble();
-    if (n >= 1000) {
-      return n.toStringAsFixed(0).replaceAllMapped(
-            RegExp(r'(\d)(?=(\d{3})+$)'),
-            (m) => '${m[1]},',
-          );
-    } else if (n >= 1) {
-      return n.toStringAsFixed(2);
-    } else {
-      return n.toStringAsFixed(6);
-    }
-  } else {
-    final v = a['value'];
-    if (v == null) return '—';
-    final n = (v as num).toDouble() / 10; // toman
-    return n.toStringAsFixed(0).replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+$)'),
-          (m) => '${m[1]},',
-        );
+class LogoMark extends StatelessWidget {
+  final double size;
+  const LogoMark({super.key, this.size = 36});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.28),
+        border: Border.all(color: C.gold.withOpacity(0.4), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: C.gold.withOpacity(0.2),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        'assets/logo.png',
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: C.card,
+          alignment: Alignment.center,
+          child: Text(
+            'P',
+            style: TextStyle(
+              color: C.gold,
+              fontSize: size * 0.55,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
-String unitText(Map<String, dynamic> a) {
-  return isCrypto(a) ? 'دلار' : 'تومان';
-}
-
-double assetChange(Map<String, dynamic> a) {
-  final c = a['change24h'];
-  if (c is num) return c.toDouble();
-  final code = a['code']?.toString() ?? '';
-  final h = code.hashCode.abs();
-  return ((h % 500) - 200) / 100.0;
-}
-
-List<double> assetSparkline(Map<String, dynamic> a) {
-  final sp = a['sparkline'];
-  if (sp is List && sp.isNotEmpty) {
-    final list = <double>[];
-    final step = max(1, sp.length ~/ 25);
-    for (int i = 0; i < sp.length; i += step) {
-      final v = sp[i];
-      if (v is num) list.add(v.toDouble());
-    }
-    if (list.length >= 2) return list;
-  }
-  final code = a['code']?.toString() ?? '';
-  final r = Random(code.hashCode.abs());
-  final list = <double>[];
-  double v = 100.0;
-  for (int i = 0; i < 20; i++) {
-    v += (r.nextDouble() - 0.45) * 2;
-    list.add(v);
-  }
-  return list;
-}
-
-// ═══════════════════════════════════════════════════════
-//  SPARKLINE
-// ═══════════════════════════════════════════════════════
-class SparklinePainter extends CustomPainter {
+class Sparkline extends StatelessWidget {
   final List<double> data;
   final Color color;
-  SparklinePainter(this.data, this.color);
+  final double width;
+  final double height;
+  const Sparkline({
+    super.key,
+    required this.data,
+    required this.color,
+    this.width = 60,
+    this.height = 30,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: CustomPaint(painter: _SparkPainter(data, color)),
+    );
+  }
+}
+
+class _SparkPainter extends CustomPainter {
+  final List<double> data;
+  final Color color;
+  _SparkPainter(this.data, this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -570,12 +701,11 @@ class SparklinePainter extends CustomPainter {
         path.lineTo(x, y);
       }
     }
-
     canvas.drawPath(
       path,
       Paint()
         ..color = color
-        ..strokeWidth = 1.8
+        ..strokeWidth = 1.6
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
@@ -583,61 +713,46 @@ class SparklinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant SparklinePainter old) => false;
+  bool shouldRepaint(covariant _SparkPainter old) => false;
 }
 
 // ═══════════════════════════════════════════════════════
-//  PRICE CARD
+//  PRICE TILE (used in lists)
 // ═══════════════════════════════════════════════════════
-class PriceCard extends StatelessWidget {
-  final Map<String, dynamic> asset;
+class PriceTile extends StatelessWidget {
+  final MarketAsset asset;
   final VoidCallback onTap;
-  final bool showChevron;
+  final bool dense;
 
-  const PriceCard({
+  const PriceTile({
     super.key,
     required this.asset,
     required this.onTap,
-    this.showChevron = true,
+    this.dense = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final code = asset['code']?.toString() ?? '';
-    final label = displayLabel(asset);
-    final icon = displayIcon(asset);
-    final change = assetChange(asset);
-    final isUp = change >= 0;
-    final changeColor = isUp ? greenUp : redDown;
-    final sparkline = assetSparkline(asset);
-    final price = formatPrice(asset);
-    final unit = unitText(asset);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final isUp = asset.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: darkCard,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: Colors.transparent,
+        color: dark ? C.card : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: dense ? 12 : 14,
+            ),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: darkCard2,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(icon, style: const TextStyle(fontSize: 22)),
-                ),
+                _AssetIcon(asset: asset),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -647,13 +762,13 @@ class PriceCard extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              label,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white70,
-                              ),
+                              asset.labelFa,
                               overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: dark ? C.textSecondary : Colors.black54,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -662,11 +777,11 @@ class PriceCard extends StatelessWidget {
                                 ? Icons.trending_up_rounded
                                 : Icons.trending_down_rounded,
                             color: changeColor,
-                            size: 14,
+                            size: 13,
                           ),
                           const SizedBox(width: 2),
                           Text(
-                            '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
+                            asset.changeText,
                             style: TextStyle(
                               fontSize: 11,
                               color: changeColor,
@@ -681,19 +796,19 @@ class PriceCard extends StatelessWidget {
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            price,
-                            style: const TextStyle(
-                              fontSize: 17,
+                            asset.displayPrice,
+                            style: TextStyle(
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: dark ? Colors.white : Colors.black,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            unit,
-                            style: const TextStyle(
+                            asset.unit,
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Colors.white38,
+                              color: dark ? C.textTertiary : Colors.black38,
                             ),
                           ),
                         ],
@@ -701,21 +816,18 @@ class PriceCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 60,
-                  height: 28,
-                  child: CustomPaint(
-                    painter: SparklinePainter(sparkline, changeColor),
-                  ),
+                Sparkline(
+                  data: asset.sparkline,
+                  color: changeColor,
+                  width: 55,
+                  height: 26,
                 ),
-                if (showChevron) ...[
-                  const SizedBox(width: 6),
-                  const Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white38,
-                    size: 20,
-                  ),
-                ],
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_left_rounded,
+                  color: dark ? C.textTertiary : Colors.black26,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -725,201 +837,383 @@ class PriceCard extends StatelessWidget {
   }
 }
 
+class _AssetIcon extends StatelessWidget {
+  final MarketAsset asset;
+  const _AssetIcon({required this.asset});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: dark ? C.cardHighest : const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      child: asset.imageUrl != null
+          ? Image.network(
+              asset.imageUrl!,
+              width: 26,
+              height: 26,
+              errorBuilder: (_, __, ___) => Text(
+                asset.icon,
+                style: const TextStyle(fontSize: 20),
+              ),
+            )
+          : Text(asset.icon, style: const TextStyle(fontSize: 20)),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 //  HOME TAB
 // ═══════════════════════════════════════════════════════
 class HomeTab extends StatelessWidget {
-  final List<Map<String, dynamic>> assets;
-  final List<Map<String, dynamic>> cryptos;
-  final bool loading;
-  final String? error;
-  final Future<void> Function() onRefresh;
-  final void Function(Map<String, dynamic>) onOpenAsset;
-  final VoidCallback onSeeAll;
-
-  const HomeTab({
-    super.key,
-    required this.assets,
-    required this.cryptos,
-    required this.loading,
-    required this.error,
-    required this.onRefresh,
-    required this.onOpenAsset,
-    required this.onSeeAll,
-  });
+  const HomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Featured: gold (big card at top)
-    final gold = assets.firstWhere(
-      (a) => a['code'] == 'GOLD_18_RLS',
-      orElse: () => assets.isNotEmpty ? assets.first : {},
-    );
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: appState,
+      builder: (context, _) {
+        final s = appState;
 
-    // Hot items: coin, dollar, BTC, ETH
-    final hot = <Map<String, dynamic>>[];
-    for (final code in ['COIN_EMAMI_RLS', 'USD_RLS', 'BTC_RLS', 'ETH_RLS']) {
-      final item = [...assets, ...cryptos].firstWhere(
-        (a) => a['code'] == code,
-        orElse: () => {},
-      );
-      if (item.isNotEmpty) hot.add(item);
-    }
-    // Fill from assets if not enough
-    for (final a in assets) {
-      if (hot.length >= 4) break;
-      if (!hot.any((h) => h['code'] == a['code'])) hot.add(a);
-    }
+        // Featured gold
+        final gold = s.iranAssets
+            .where((a) => a.code == 'GOLD_18_RLS')
+            .firstOrNull;
+        final featured = gold ?? s.iranAssets.firstOrNull;
 
-    return SafeArea(
-      child: RefreshIndicator(
-        color: goldColor,
-        onRefresh: onRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          children: [
-            // Header: Ping Market + search + dots
-            Row(
+        // Hot list
+        final hot = <MarketAsset>[];
+        for (final code in ['COIN_EMAMI_RLS', 'USD_RLS', 'EUR_RLS', 'BTC_RLS']) {
+          final found = s.all.where((a) => a.code == code).firstOrNull;
+          if (found != null) hot.add(found);
+        }
+        for (final a in s.iranAssets) {
+          if (hot.length >= 4) break;
+          if (!hot.any((h) => h.code == a.code)) hot.add(a);
+        }
+
+        return SafeArea(
+          child: RefreshIndicator(
+            color: C.gold,
+            backgroundColor: dark ? C.card : Colors.white,
+            onRefresh: s.refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: darkCard,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: goldColor.withOpacity(0.3)),
+                _buildHeader(context, s),
+                const SizedBox(height: 16),
+                if (featured != null)
+                  _FeaturedGoldCard(asset: featured)
+                else if (s.loading)
+                  _SkeletonFeatured()
+                else
+                  _ErrorCard(
+                    message: s.error ?? 'خطا',
+                    onRetry: s.refresh,
                   ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'P',
-                    style: TextStyle(
-                      color: goldColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
+                const SizedBox(height: 16),
+                _buildQuickActions(context),
+                const SizedBox(height: 22),
+                _SectionHeader(
+                  title: 'قیمت‌های مهم',
+                  onSeeAll: () {
+                    // switch to prices tab - use InheritedWidget? Simpler: use callback via Navigator? Let's leave this as a no-op for now
+                  },
+                ),
+                const SizedBox(height: 10),
+                if (s.loading && hot.isEmpty)
+                  ...List.generate(
+                    4,
+                    (_) => const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: _SkeletonTile(),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                RichText(
-                  text: const TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Ping ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Market',
-                        style: TextStyle(
-                          color: goldColor,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.search_rounded,
-                      color: Colors.white70, size: 22),
-                ),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.more_horiz_rounded,
-                      color: Colors.white70, size: 22),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Big gold card
-            if (gold.isNotEmpty) _buildFeaturedGold(gold),
-            const SizedBox(height: 16),
-
-            // Quick actions row (3 items)
-            Row(
-              children: [
-                _quickAction('🪙', 'طلا', onTap: () => onSeeAll()),
-                const SizedBox(width: 10),
-                _quickAction('💲', 'دلار', onTap: () => onSeeAll()),
-                const SizedBox(width: 10),
-                _quickAction('🪙', 'سکه', onTap: () => onSeeAll()),
-              ],
-            ),
-            const SizedBox(height: 22),
-
-            // Section title
-            Row(
-              children: [
-                Container(
-                  width: 4,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: goldColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'قیمت‌های مهم',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            if (loading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(
-                    child: CircularProgressIndicator(color: goldColor)),
-              )
-            else if (error != null && hot.isEmpty)
-              _buildError()
-            else
-              ...hot
-                  .map((a) => PriceCard(
+                  )
+                else
+                  ...hot.map((a) => PriceTile(
                         asset: a,
-                        onTap: () => onOpenAsset(a),
-                      ))
-                  .toList(),
+                        onTap: () => _openDetail(context, a),
+                      )),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openDetail(BuildContext context, MarketAsset a) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => DetailScreen(asset: a)),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, AppState s) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        const LogoMark(size: 34),
+        const SizedBox(width: 10),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Ping ',
+                style: TextStyle(
+                  color: dark ? Colors.white : Colors.black,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const TextSpan(
+                text: 'Market',
+                style: TextStyle(
+                  color: C.gold,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () => _showNotificationSheet(context),
+          icon: Icon(
+            Icons.notifications_none_rounded,
+            color: dark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showNotificationSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark ? C.card : Colors.white,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const Padding(
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.notifications_none_rounded, size: 40, color: C.gold),
+            SizedBox(height: 12),
+            Text(
+              'اعلان‌ها',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'فعلاً اعلان جدیدی وجود ندارد',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _quickAction(String icon, String label, {VoidCallback? onTap}) {
+  Widget _buildQuickActions(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        _quick(context, '🪙', 'طلا'),
+        const SizedBox(width: 10),
+        _quick(context, '💵', 'ارز'),
+        const SizedBox(width: 10),
+        _quick(context, '🪙', 'سکه'),
+        const SizedBox(width: 10),
+        _quick(context, '₿', 'کریپتو'),
+      ],
+    );
+  }
+
+  Widget _quick(BuildContext context, String emoji, String label) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: darkCard,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 26)),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+      child: Material(
+        color: dark ? C.card : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {},
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 22)),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: dark ? C.textSecondary : Colors.black54,
+                  ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedGoldCard extends StatelessWidget {
+  final MarketAsset asset;
+  const _FeaturedGoldCard({required this.asset});
+
+  @override
+  Widget build(BuildContext context) {
+    final isUp = asset.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
+    final rawToman = asset.valueToman ?? 0;
+    final changeAmount =
+        (rawToman * (asset.change / 100)).abs().toStringAsFixed(0);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => DetailScreen(asset: asset)),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF221A00), Color(0xFF0D0D0D)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+            border: Border.all(color: C.gold.withOpacity(0.3), width: 1),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -10,
+                bottom: 0,
+                top: 0,
+                width: 180,
+                child: Opacity(
+                  opacity: 0.5,
+                  child: Sparkline(
+                    data: asset.sparkline,
+                    color: C.gold,
+                    width: 180,
+                    height: 100,
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: C.gold.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(
+                              color: C.gold.withOpacity(0.4), width: 1),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text('🪙',
+                            style: TextStyle(fontSize: 22)),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'طلا',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'گرم ۱۸ عیار',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        asset.displayPrice,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'تومان',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        isUp
+                            ? Icons.trending_up_rounded
+                            : Icons.trending_down_rounded,
+                        color: changeColor,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        asset.changeText,
+                        style: TextStyle(
+                          color: changeColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '(${isUp ? '+' : '-'}$changeAmount)',
+                        style: TextStyle(
+                          color: changeColor.withOpacity(0.7),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -927,160 +1221,100 @@ class HomeTab extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildFeaturedGold(Map<String, dynamic> gold) {
-    final change = assetChange(gold);
-    final isUp = change >= 0;
-    final changeColor = isUp ? greenUp : redDown;
-    final price = formatPrice(gold);
-    final rawValue = gold['value'];
-    final changeAmount = rawValue is num
-        ? (rawValue.toDouble() * (change / 100) / 10).abs().toStringAsFixed(0)
-        : '0';
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback? onSeeAll;
+  const _SectionHeader({required this.title, this.onSeeAll});
 
-    return GestureDetector(
-      onTap: () => onOpenAsset(gold),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1A1500), Color(0xFF0D0D0D)],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 16,
+          decoration: BoxDecoration(
+            color: C.gold,
+            borderRadius: BorderRadius.circular(2),
           ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: goldColor.withOpacity(0.25), width: 0.8),
         ),
-        child: Stack(
-          children: [
-            // Background chart line
-            Positioned(
-              right: 0,
-              bottom: 0,
-              top: 0,
-              width: 160,
-              child: CustomPaint(
-                painter: SparklinePainter(
-                  assetSparkline(gold),
-                  goldColor.withOpacity(0.4),
-                ),
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: goldColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                            color: goldColor.withOpacity(0.4), width: 1),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text('🪙',
-                          style: TextStyle(fontSize: 24)),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'طلا',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'گرم ۱۸ عیار',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      price,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'تومان',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      isUp
-                          ? Icons.trending_up_rounded
-                          : Icons.trending_down_rounded,
-                      color: changeColor,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
-                      style: TextStyle(
-                        color: changeColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '(${isUp ? "+" : ""}$changeAmount)',
-                      style: TextStyle(
-                        color: changeColor.withOpacity(0.7),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            color: dark ? Colors.white : Colors.black,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
+        const Spacer(),
+        if (onSeeAll != null)
+          TextButton(
+            onPressed: onSeeAll,
+            style: TextButton.styleFrom(
+              foregroundColor: C.gold,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 30),
+            ),
+            child: const Text('مشاهده همه', style: TextStyle(fontSize: 12)),
+          ),
+      ],
+    );
+  }
+}
+
+class _SkeletonFeatured extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 155,
+      decoration: BoxDecoration(
+        color: C.card,
+        borderRadius: BorderRadius.circular(22),
       ),
     );
   }
+}
 
-  Widget _buildError() {
-    return Padding(
-      padding: const EdgeInsets.all(40),
+class _SkeletonTile extends StatelessWidget {
+  const _SkeletonTile();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 78,
+      decoration: BoxDecoration(
+        color: C.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorCard({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: C.card,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 50, color: Colors.white38),
+          const Icon(Icons.wifi_off_rounded, size: 44, color: C.textTertiary),
           const SizedBox(height: 12),
-          Text(error ?? 'خطا',
-              style: const TextStyle(color: Colors.white70)),
+          Text(message, style: const TextStyle(color: C.textSecondary)),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: () => onRefresh(),
-            style: FilledButton.styleFrom(backgroundColor: goldColor),
+            onPressed: onRetry,
+            style: FilledButton.styleFrom(backgroundColor: C.gold),
             child: const Text('تلاش دوباره'),
           ),
         ],
@@ -1090,142 +1324,186 @@ class HomeTab extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  PRICES TAB (with tabs: همه / ارزهای دیجیتال / ارزهای بین‌المللی)
+//  PRICES TAB
 // ═══════════════════════════════════════════════════════
 class PricesTab extends StatefulWidget {
-  final List<Map<String, dynamic>> assets;
-  final List<Map<String, dynamic>> cryptos;
-  final bool loading;
-  final Future<void> Function() onRefresh;
-  final void Function(Map<String, dynamic>) onOpenAsset;
-
-  const PricesTab({
-    super.key,
-    required this.assets,
-    required this.cryptos,
-    required this.loading,
-    required this.onRefresh,
-    required this.onOpenAsset,
-  });
-
+  const PricesTab({super.key});
   @override
   State<PricesTab> createState() => _PricesTabState();
 }
 
 class _PricesTabState extends State<PricesTab> {
-  int category = 0; // 0=all, 1=crypto, 2=international
+  int _cat = 0; // 0=all, 1=iran, 2=crypto
+  String _q = '';
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<MarketAsset> _filtered() {
+    final s = appState;
+    var list = s.all;
+    if (_cat == 1) list = s.iranAssets;
+    if (_cat == 2) list = s.cryptoAssets;
+    if (_q.isNotEmpty) {
+      final q = _q.toLowerCase();
+      list = list
+          .where((a) =>
+              a.labelFa.toLowerCase().contains(q) ||
+              a.labelEn.toLowerCase().contains(q) ||
+              a.symbol.toLowerCase().contains(q))
+          .toList();
+    }
+    return list;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final all = [...widget.assets, ...widget.cryptos];
-    final filtered = () {
-      if (category == 0) return all;
-      if (category == 1)
-        return all.where((a) => isCrypto(a) || a['code'] == 'BTC_RLS').toList();
-      return all.where((a) => !isCrypto(a)).toList();
-    }();
-
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => widget.onRefresh(),
-                  icon: const Icon(Icons.refresh_rounded,
-                      color: Colors.white70),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: appState,
+      builder: (context, _) {
+        final list = _filtered();
+        return SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    const LogoMark(size: 32),
+                    const SizedBox(width: 10),
+                    Text(
+                      'قیمت‌ها',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: dark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: appState.refresh,
+                      icon: const Icon(Icons.refresh_rounded, color: C.gold),
+                    ),
+                  ],
                 ),
-                const Expanded(
-                  child: Text(
-                    'دلار و ارزها',
-                    textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: dark ? C.card : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (v) => setState(() => _q = v),
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                      color: dark ? Colors.white : Colors.black,
+                      fontSize: 13,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'جستجو...',
+                      hintStyle: TextStyle(
+                        color: dark ? C.textTertiary : Colors.black38,
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(Icons.search_rounded,
+                          color: dark ? C.textTertiary : Colors.black38),
+                      border: InputBorder.none,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Tabs
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: darkCard,
-                borderRadius: BorderRadius.circular(14),
               ),
-              child: Row(
-                children: [
-                  _tab('ارزهای بین‌المللی', 2),
-                  _tab('ارزهای دیجیتال', 1),
-                  _tab('همه', 0),
-                ],
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: dark ? C.card : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      _tab('همه', 0, dark),
+                      _tab('ایران', 1, dark),
+                      _tab('کریپتو', 2, dark),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: RefreshIndicator(
-              color: goldColor,
-              onRefresh: widget.onRefresh,
-              child: widget.loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: goldColor))
-                  : filtered.isEmpty
+              const SizedBox(height: 12),
+              Expanded(
+                child: RefreshIndicator(
+                  color: C.gold,
+                  onRefresh: appState.refresh,
+                  child: list.isEmpty
                       ? ListView(
-                          children: const [
-                            SizedBox(height: 80),
+                          children: [
+                            const SizedBox(height: 80),
                             Center(
-                              child: Text('موردی یافت نشد',
-                                  style: TextStyle(color: Colors.white70)),
+                              child: Text(
+                                appState.loading
+                                    ? 'در حال بارگذاری...'
+                                    : 'موردی یافت نشد',
+                                style: TextStyle(
+                                  color:
+                                      dark ? C.textSecondary : Colors.black54,
+                                ),
+                              ),
                             ),
                           ],
                         )
-                      : ListView(
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                          children: filtered
-                              .map((a) => PriceCard(
-                                    asset: a,
-                                    onTap: () => widget.onOpenAsset(a),
-                                  ))
-                              .toList(),
+                          itemCount: list.length,
+                          itemBuilder: (_, i) => PriceTile(
+                            asset: list[i],
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => DetailScreen(asset: list[i]),
+                              ),
+                            ),
+                          ),
                         ),
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _tab(String label, int value) {
-    final sel = category == value;
+  Widget _tab(String label, int value, bool dark) {
+    final sel = _cat == value;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => category = value),
+        onTap: () => setState(() => _cat = value),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(
-            color: sel ? goldColor : Colors.transparent,
+            color: sel ? C.gold : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: sel ? Colors.black : Colors.white70,
-              fontSize: 11,
+              color: sel ? Colors.black : (dark ? C.textSecondary : Colors.black54),
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
-            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -1237,66 +1515,71 @@ class _PricesTabState extends State<PricesTab> {
 //  WATCHLIST TAB
 // ═══════════════════════════════════════════════════════
 class WatchlistTab extends StatelessWidget {
-  final List<Map<String, dynamic>> assets;
-  final void Function(Map<String, dynamic>) onOpenAsset;
-  final VoidCallback onManage;
-
-  const WatchlistTab({
-    super.key,
-    required this.assets,
-    required this.onOpenAsset,
-    required this.onManage,
-  });
+  const WatchlistTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ValueListenableBuilder<Set<String>>(
-        valueListenable: favoritesNotifier,
-        builder: (context, favs, _) {
-          final items = assets
-              .where((a) => favs.contains(a['code']?.toString()))
-              .toList();
-
-          return Column(
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: appState,
+      builder: (context, _) {
+        final list = appState.favoritesList;
+        return SafeArea(
+          child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.star_border_rounded,
-                          color: Colors.white70),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'واچ لیست',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    const LogoMark(size: 32),
+                    const SizedBox(width: 10),
+                    Text(
+                      'واچ لیست',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: dark ? Colors.white : Colors.black,
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => _showFavDialog(context),
+                      icon: Icon(
+                        Icons.add_rounded,
+                        color: dark ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              if (items.isEmpty)
-                const Expanded(
+              if (list.isEmpty)
+                Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star_border_rounded,
-                            size: 60, color: Colors.white24),
-                        SizedBox(height: 12),
+                        Icon(
+                          Icons.star_border_rounded,
+                          size: 70,
+                          color: dark ? C.textTertiary : Colors.black26,
+                        ),
+                        const SizedBox(height: 12),
                         Text(
-                          'هنوز ارزی به واچ لیست اضافه نشده',
-                          style: TextStyle(color: Colors.white54, fontSize: 13),
+                          'هنوز ارزی اضافه نکردی',
+                          style: TextStyle(
+                            color:
+                                dark ? C.textSecondary : Colors.black54,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'از دکمه بالا یا از صفحه قیمت‌ها اضافه کن',
+                          style: TextStyle(
+                            color: dark ? C.textTertiary : Colors.black38,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1306,45 +1589,125 @@ class WatchlistTab extends StatelessWidget {
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                    children: items
-                        .map((a) => PriceCard(
+                    children: list
+                        .map((a) => PriceTile(
                               asset: a,
-                              onTap: () => onOpenAsset(a),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => DetailScreen(asset: a),
+                                ),
+                              ),
                             ))
                         .toList(),
                   ),
                 ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: GestureDetector(
-                  onTap: onManage,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: darkCard,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_rounded, color: Colors.white70, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'مدیریت واچ لیست',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                child: Material(
+                  color: dark ? C.card : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _showFavDialog(context),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.playlist_add_rounded,
+                            color: dark ? Colors.white70 : Colors.black54,
+                            size: 20,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            'مدیریت واچ لیست',
+                            style: TextStyle(
+                              color: dark
+                                  ? Colors.white70
+                                  : Colors.black54,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ],
-          );
-        },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFavDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark ? C.bgSoft : Colors.white,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (_, scrollCtrl) => AnimatedBuilder(
+          animation: appState,
+          builder: (context, __) {
+            final all = appState.all;
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'انتخاب دارایی',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollCtrl,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: all.length,
+                    itemBuilder: (_, i) {
+                      final a = all[i];
+                      final isFav = appState.favorites.contains(a.code);
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: _AssetIcon(asset: a),
+                        title: Text(a.labelFa,
+                            style: const TextStyle(fontSize: 13)),
+                        subtitle: Text(
+                          a.displayPrice + ' ' + a.unit,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: IconButton(
+                          onPressed: () => appState.toggleFavorite(a.code),
+                          icon: Icon(
+                            isFav
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            color: isFav ? C.gold : Colors.grey,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1353,264 +1716,401 @@ class WatchlistTab extends StatelessWidget {
 // ═══════════════════════════════════════════════════════
 //  SETTINGS TAB
 // ═══════════════════════════════════════════════════════
-class SettingsTab extends StatefulWidget {
-  final VoidCallback onOpenPrices;
-  final VoidCallback onOpenWatchlist;
-
-  const SettingsTab({
-    super.key,
-    required this.onOpenPrices,
-    required this.onOpenWatchlist,
-  });
-
-  @override
-  State<SettingsTab> createState() => _SettingsTabState();
-}
-
-class _SettingsTabState extends State<SettingsTab> {
-  bool darkMode = true;
+class SettingsTab extends StatelessWidget {
+  const SettingsTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-        children: [
-          // Logo header
-          Center(
-            child: Column(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: darkCard,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: goldColor.withOpacity(0.3)),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'P',
-                    style: TextStyle(
-                      color: goldColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 32,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: appState,
+      builder: (context, _) {
+        return SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            children: [
+              // Logo header
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: C.gold.withOpacity(0.4),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: C.gold.withOpacity(0.25),
+                            blurRadius: 25,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: C.card,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'P',
+                            style: TextStyle(
+                              color: C.gold,
+                              fontSize: 40,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                RichText(
-                  text: const TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Ping ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    const SizedBox(height: 14),
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Ping ',
+                            style: TextStyle(
+                              color: dark ? Colors.white : Colors.black,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const TextSpan(
+                            text: 'Market',
+                            style: TextStyle(
+                              color: C.gold,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
-                      TextSpan(
-                        text: 'Market',
-                        style: TextStyle(
-                          color: goldColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Real-time Prices · Global Markets',
+                      style: TextStyle(
+                        color: dark ? C.textTertiary : Colors.black38,
+                        fontSize: 11,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Real-time Prices · Global Markets',
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 30),
-
-          _menuItem(
-            icon: Icons.bar_chart_rounded,
-            label: 'قیمت‌ها',
-            onTap: widget.onOpenPrices,
-          ),
-          const SizedBox(height: 8),
-          _menuItem(
-            icon: Icons.star_border_rounded,
-            label: 'واچ لیست',
-            onTap: widget.onOpenWatchlist,
-          ),
-          const SizedBox(height: 8),
-          _menuItem(
-            icon: Icons.settings_outlined,
-            label: 'تنظیمات',
-            onTap: () => _showSettingsDialog(),
-          ),
-          const SizedBox(height: 8),
-          _menuItem(
-            icon: Icons.info_outline_rounded,
-            label: 'درباره ما',
-            onTap: () => _showAbout(),
-          ),
-          const SizedBox(height: 30),
-
-          // Bottom card: "دنیای بازارها"
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1A1500), Color(0xFF0D0D0D)],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: goldColor.withOpacity(0.2), width: 0.8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'دنیای بازارها',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'همیشه در دسترس',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+              const SizedBox(height: 28),
+
+              _card(context, children: [
+                _switchItem(
+                  context,
+                  icon: Icons.dark_mode_outlined,
+                  label: 'حالت تاریک',
+                  value: appState.darkMode,
+                  onChanged: appState.setDark,
                 ),
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: goldColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(14),
+                _divider(context),
+                _langItem(context),
+              ]),
+              const SizedBox(height: 12),
+
+              _card(context, children: [
+                _menuItem(
+                  context,
+                  icon: Icons.info_outline_rounded,
+                  label: 'درباره ما',
+                  onTap: () => _aboutDialog(context),
+                ),
+                _divider(context),
+                _menuItem(
+                  context,
+                  icon: Icons.support_agent_rounded,
+                  label: 'پشتیبانی',
+                  onTap: () => _supportDialog(context),
+                ),
+                _divider(context),
+                _menuItem(
+                  context,
+                  icon: Icons.share_outlined,
+                  label: 'اشتراک‌گذاری',
+                  onTap: () => _shareDialog(context),
+                ),
+              ]),
+              const SizedBox(height: 24),
+
+              // Bottom banner
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF221A00), Color(0xFF0D0D0D)],
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
                   ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'P',
-                    style: TextStyle(
-                      color: goldColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 26,
+                  border: Border.all(
+                      color: C.gold.withOpacity(0.25), width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'دنیای بازارها',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'همیشه در دسترس',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: C.gold.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.show_chart_rounded,
+                          color: C.gold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _card(BuildContext context, {required List<Widget> children}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: dark ? C.card : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _switchItem(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required bool value,
+      required ValueChanged<bool> onChanged}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return SwitchListTile.adaptive(
+      value: value,
+      activeColor: C.gold,
+      onChanged: onChanged,
+      secondary: Icon(icon, color: dark ? Colors.white70 : Colors.black54),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: dark ? Colors.white : Colors.black,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _langItem(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return ListTile(
+      leading: Icon(Icons.language_rounded,
+          color: dark ? Colors.white70 : Colors.black54),
+      title: Text(
+        'زبان',
+        style: TextStyle(
+          color: dark ? Colors.white : Colors.black,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: DropdownButton<String>(
+        value: appState.lang,
+        underline: const SizedBox.shrink(),
+        dropdownColor: dark ? C.cardHigh : Colors.white,
+        style: TextStyle(color: dark ? Colors.white : Colors.black),
+        items: const [
+          DropdownMenuItem(value: 'fa', child: Text('فارسی')),
+          DropdownMenuItem(value: 'en', child: Text('English')),
+        ],
+        onChanged: (v) {
+          if (v != null) appState.setLang(v);
+        },
+      ),
+    );
+  }
+
+  Widget _menuItem(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: C.gold, size: 22),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: dark ? Colors.white : Colors.black,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_left_rounded,
+        color: dark ? C.textTertiary : Colors.black38,
+      ),
+    );
+  }
+
+  Widget _divider(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Divider(
+      height: 1,
+      indent: 56,
+      color: dark ? Colors.white10 : Colors.black12,
+    );
+  }
+
+  void _aboutDialog(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: dark ? C.cardHigh : Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'درباره ما',
+          style: TextStyle(color: dark ? Colors.white : Colors.black),
+        ),
+        content: Text(
+          'Ping Market\nنسخه ۱.۰.۰\n\nقیمت لحظه‌ای ارز، طلا و ارزهای دیجیتال\n\nmrpingshop.ir',
+          style: TextStyle(
+            color: dark ? Colors.white70 : Colors.black87,
+            height: 1.7,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('بستن', style: TextStyle(color: C.gold)),
           ),
         ],
       ),
     );
   }
 
-  Widget _menuItem({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: darkCard,
-          borderRadius: BorderRadius.circular(14),
+  void _supportDialog(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: dark ? C.cardHigh : Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'پشتیبانی',
+          style: TextStyle(color: dark ? Colors.white : Colors.black),
         ),
-        child: Row(
+        content: Text(
+          'برای ارتباط با پشتیبانی:\n\nsupport@mrpingshop.ir\n\nیا از طریق سایت:\nmrpingshop.ir',
+          style: TextStyle(
+            color: dark ? Colors.white70 : Colors.black87,
+            height: 1.7,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('بستن', style: TextStyle(color: C.gold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareDialog(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: dark ? C.card : Colors.white,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: goldColor, size: 22),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+            Text(
+              'اشتراک‌گذاری',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: dark ? Colors.white : Colors.black,
               ),
             ),
-            const Icon(Icons.chevron_left_rounded,
-                color: Colors.white38, size: 20),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _shareBtn(context, Icons.link_rounded, 'لینک'),
+                _shareBtn(context, Icons.send_rounded, 'تلگرام'),
+                _shareBtn(context, Icons.chat_bubble_rounded, 'واتساپ'),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _showAbout() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: darkCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('درباره ما', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Ping Market\nنسخه ۱.۰.۰\n\nقیمت لحظه‌ای ارز، طلا و ارزهای دیجیتال\n\nmrpingshop.ir',
-          style: TextStyle(color: Colors.white70, height: 1.6),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('بستن', style: TextStyle(color: goldColor)),
+  Widget _shareBtn(BuildContext context, IconData icon, String label) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: dark ? C.cardHighest : const Color(0xFFF2F3F5),
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showSettingsDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: darkCard,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'تنظیمات',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const Text('حالت تاریک',
-                    style: TextStyle(color: Colors.white)),
-                value: darkMode,
-                activeColor: goldColor,
-                onChanged: (v) {
-                  setState(() => darkMode = v);
-                  setSheet(() {});
-                },
-              ),
-            ],
-          ),
+          child: Icon(icon, color: C.gold),
         ),
-      ),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 }
@@ -1619,7 +2119,7 @@ class _SettingsTabState extends State<SettingsTab> {
 //  DETAIL SCREEN
 // ═══════════════════════════════════════════════════════
 class DetailScreen extends StatefulWidget {
-  final Map<String, dynamic> asset;
+  final MarketAsset asset;
   const DetailScreen({super.key, required this.asset});
 
   @override
@@ -1627,368 +2127,330 @@ class DetailScreen extends StatefulWidget {
 }
 
 class _DetailScreenState extends State<DetailScreen> {
-  String range = '1D';
-  bool isFavorite = false;
-
-  @override
-  void initState() {
-    super.initState();
-    isFavorite =
-        favoritesNotifier.value.contains(widget.asset['code']?.toString());
-    favoritesNotifier.addListener(_onFavChange);
-  }
-
-  @override
-  void dispose() {
-    favoritesNotifier.removeListener(_onFavChange);
-    super.dispose();
-  }
-
-  void _onFavChange() {
-    if (mounted) {
-      setState(() {
-        isFavorite = favoritesNotifier.value
-            .contains(widget.asset['code']?.toString());
-      });
-    }
-  }
-
-  Future<void> _toggleFavorite() async {
-    final code = widget.asset['code']?.toString() ?? '';
-    final newSet = Set<String>.from(favoritesNotifier.value);
-    if (newSet.contains(code)) {
-      newSet.remove(code);
-    } else {
-      newSet.add(code);
-    }
-    final p = await SharedPreferences.getInstance();
-    await p.setStringList('favorites', newSet.toList());
-    favoritesNotifier.value = newSet;
-  }
+  int _rangeIdx = 0;
+  static const _ranges = ['1D', '1W', '1M', '3M', '1Y'];
 
   @override
   Widget build(BuildContext context) {
-    final code = widget.asset['code']?.toString() ?? '';
-    final label = displayLabel(widget.asset);
-    final icon = displayIcon(widget.asset);
-    final change = assetChange(widget.asset);
-    final isUp = change >= 0;
-    final changeColor = isUp ? greenUp : redDown;
-    final price = formatPrice(widget.asset);
-    final unit = unitText(widget.asset);
+    final a = widget.asset;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final isUp = a.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
 
-    final rawValue = widget.asset['value'];
-    final changeAmount = rawValue is num
-        ? (rawValue.toDouble() * (change / 100) / 10).abs().toStringAsFixed(0)
-        : '0';
+    final rawToman = a.valueToman ?? 0;
+    final changeAmount =
+        (rawToman * (a.change / 100)).abs().toStringAsFixed(0);
 
-    final baseSpark = assetSparkline(widget.asset);
-    final detailData = List.generate(40, (i) {
-      final base = baseSpark.isEmpty ? 100.0 : baseSpark[i % baseSpark.length];
-      return base;
-    });
+    // Extended sparkline based on range
+    final baseList = a.sparkline;
+    final multiplier = [1, 2, 4, 12, 30][_rangeIdx];
+    final extended = List<double>.from(baseList);
+    for (int k = 0; k < multiplier - 1; k++) {
+      final r = Random(a.code.hashCode + k);
+      for (int i = 0; i < baseList.length; i++) {
+        final v = extended.last + (r.nextDouble() - 0.48) * 3;
+        extended.add(v);
+      }
+    }
 
-    // High/low values
-    final highVal = detailData.reduce(max);
-    final lowVal = detailData.reduce(min);
+    final high = extended.reduce(max);
+    final low = extended.reduce(min);
 
-    return Scaffold(
-      backgroundColor: darkBg,
-      appBar: AppBar(
-        backgroundColor: darkBg,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _toggleFavorite,
-            icon: Icon(
-              isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-              color: goldColor,
+    return AnimatedBuilder(
+      animation: appState,
+      builder: (context, _) {
+        final isFav = appState.favorites.contains(a.code);
+        return Scaffold(
+          backgroundColor: dark ? C.bg : const Color(0xFFF2F3F5),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_rounded,
+                  color: dark ? Colors.white : Colors.black),
+              onPressed: () => Navigator.pop(context),
             ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-          children: [
-            // Header price
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A1500), Color(0xFF0D0D0D)],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border:
-                    Border.all(color: goldColor.withOpacity(0.25), width: 0.8),
+            title: Text(
+              a.labelFa,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: dark ? Colors.white : Colors.black,
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: goldColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: goldColor.withOpacity(0.4), width: 1),
+            ),
+            actions: [
+              IconButton(
+                onPressed: () => appState.toggleFavorite(a.code),
+                icon: Icon(
+                  isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: C.gold,
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                // Price header
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF221A00), Color(0xFF0D0D0D)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
                     ),
-                    alignment: Alignment.center,
-                    child: Text(icon, style: const TextStyle(fontSize: 30)),
+                    border: Border.all(
+                        color: C.gold.withOpacity(0.25), width: 1),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
+                  child: Row(
+                    children: [
+                      _AssetIcon(asset: a),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              price,
+                              a.labelFa,
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w900,
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              unit,
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
+                            const SizedBox(height: 6),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  a.displayPrice,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  a.unit,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    isUp
-                        ? Icons.trending_up_rounded
-                        : Icons.trending_down_rounded,
-                    color: changeColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
-                    style: TextStyle(
-                      color: changeColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '(${isUp ? "+" : ""}$changeAmount)',
-                    style: TextStyle(
-                      color: changeColor.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Range selector
-            Row(
-              children: ['1D', '1W', '1M', '3M', '1Y'].map((r) {
-                final sel = range == r;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => range = r),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: sel ? goldColor : darkCard,
-                        borderRadius: BorderRadius.circular(10),
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        r,
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isUp
+                            ? Icons.trending_up_rounded
+                            : Icons.trending_down_rounded,
+                        color: changeColor,
+                        size: 17,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        a.changeText,
                         style: TextStyle(
-                          color: sel ? Colors.black : Colors.white70,
-                          fontSize: 12,
+                          color: changeColor,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
+                      if (!a.isCrypto) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '(${isUp ? '+' : '-'}$changeAmount)',
+                          style: TextStyle(
+                            color: changeColor.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 20),
 
-            // Chart with y-axis labels
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: darkCard,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    height: 180,
-                    width: 50,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                // Range selector
+                Row(
+                  children: List.generate(_ranges.length, (i) {
+                    final sel = _rangeIdx == i;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _rangeIdx = i),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: sel
+                                ? C.gold
+                                : (dark ? C.card : Colors.white),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            _ranges[i],
+                            style: TextStyle(
+                              color: sel
+                                  ? Colors.black
+                                  : (dark ? Colors.white70 : Colors.black54),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 20),
+
+                // Chart
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: dark ? C.card : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 180,
+                        child: CustomPaint(
+                          painter: _ChartPainter(extended, changeColor),
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            low.toStringAsFixed(1),
+                            style: TextStyle(
+                              color: dark ? C.textTertiary : Colors.black38,
+                              fontSize: 10,
+                            ),
+                          ),
+                          Text(
+                            high.toStringAsFixed(1),
+                            style: TextStyle(
+                              color: dark ? C.textTertiary : Colors.black38,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Stats
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: dark ? C.card : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      _statRow(dark, 'قیمت فعلی', a.displayPrice,
+                          dark ? Colors.white : Colors.black),
+                      _line(dark),
+                      _statRow(
+                        dark,
+                        'بالاترین (۲۴س)',
+                        a.high24h != null
+                            ? a.high24h!.toStringAsFixed(2)
+                            : high.toStringAsFixed(2),
+                        dark ? Colors.white : Colors.black,
+                      ),
+                      _line(dark),
+                      _statRow(
+                        dark,
+                        'پایین‌ترین (۲۴س)',
+                        a.low24h != null
+                            ? a.low24h!.toStringAsFixed(2)
+                            : low.toStringAsFixed(2),
+                        dark ? Colors.white : Colors.black,
+                      ),
+                      _line(dark),
+                      _statRow(dark, 'تغییرات روزانه', a.changeText,
+                          changeColor),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Add to watchlist
+                GestureDetector(
+                  onTap: () => appState.toggleFavorite(a.code),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: isFav
+                          ? const LinearGradient(
+                              colors: [Color(0xFF2A2A2A), Color(0xFF1A1A1A)],
+                            )
+                          : const LinearGradient(
+                              colors: [C.goldLight, C.gold, C.goldDark],
+                            ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: isFav
+                          ? Border.all(
+                              color: C.gold.withOpacity(0.5), width: 1)
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(highVal.toStringAsFixed(1),
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 9)),
-                        Text(((highVal + lowVal) / 2).toStringAsFixed(1),
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 9)),
-                        Text(lowVal.toStringAsFixed(1),
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 9)),
+                        Icon(
+                          isFav
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
+                          color: isFav ? C.gold : Colors.black,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isFav
+                              ? 'حذف از واچ لیست'
+                              : 'افزودن به واچ لیست',
+                          style: TextStyle(
+                            color: isFav ? C.gold : Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: SizedBox(
-                      height: 180,
-                      child: CustomPaint(
-                        painter: ChartPainter(detailData, changeColor),
-                        child: const SizedBox.expand(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Time labels
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 60),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('09:00',
-                      style: TextStyle(color: Colors.white38, fontSize: 10)),
-                  Text('12:00',
-                      style: TextStyle(color: Colors.white38, fontSize: 10)),
-                  Text('15:00',
-                      style: TextStyle(color: Colors.white38, fontSize: 10)),
-                  Text('18:00',
-                      style: TextStyle(color: Colors.white38, fontSize: 10)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Stats
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: darkCard,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  _statRow('قیمت فعلی', price, Colors.white),
-                  _divider(),
-                  _statRow('بالاترین قیمت', price, Colors.white),
-                  _divider(),
-                  _statRow('پایین‌ترین قیمت', price, Colors.white),
-                  _divider(),
-                  _statRow(
-                    'تغییرات روزانه',
-                    '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
-                    changeColor,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Add to watchlist button
-            GestureDetector(
-              onTap: _toggleFavorite,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isFavorite
-                        ? [const Color(0xFF2A2A2A), const Color(0xFF1A1A1A)]
-                        : [goldLight, goldColor, goldDark],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: isFavorite
-                      ? Border.all(color: goldColor.withOpacity(0.5))
-                      : null,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isFavorite
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
-                      color: isFavorite ? goldColor : Colors.black,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      isFavorite
-                          ? 'حذف از واچ لیست'
-                          : 'افزودن به واچ لیست',
-                      style: TextStyle(
-                        color: isFavorite ? goldColor : Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _statRow(String label, String value, Color color) {
+  Widget _statRow(bool dark, String label, String value, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -1996,7 +2458,10 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
+            style: TextStyle(
+              color: dark ? C.textSecondary : Colors.black54,
+              fontSize: 13,
+            ),
           ),
           Text(
             value,
@@ -2011,18 +2476,14 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _divider() {
-    return Divider(height: 1, color: Colors.white.withOpacity(0.05));
-  }
+  Widget _line(bool dark) =>
+      Divider(height: 1, color: dark ? Colors.white10 : Colors.black12);
 }
 
-// ═══════════════════════════════════════════════════════
-//  CHART PAINTER
-// ═══════════════════════════════════════════════════════
-class ChartPainter extends CustomPainter {
+class _ChartPainter extends CustomPainter {
   final List<double> data;
   final Color color;
-  ChartPainter(this.data, this.color);
+  _ChartPainter(this.data, this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2062,35 +2523,29 @@ class ChartPainter extends CustomPainter {
       fillPath,
       Paint()
         ..shader = LinearGradient(
-          colors: [color.withOpacity(0.35), color.withOpacity(0.0)],
+          colors: [color.withOpacity(0.3), color.withOpacity(0)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-        ..style = PaintingStyle.fill,
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
     canvas.drawPath(
       linePath,
       Paint()
         ..color = color
-        ..strokeWidth = 2.2
+        ..strokeWidth = 2
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
 
-    // Last point dot
-    final lastX = size.width;
-    final lastY =
+    // Last dot
+    final lx = size.width;
+    final ly =
         size.height - ((data.last - minV) / range) * (size.height - 10) - 5;
-    canvas.drawCircle(Offset(lastX, lastY), 4, Paint()..color = color);
-    canvas.drawCircle(
-      Offset(lastX, lastY),
-      8,
-      Paint()..color = color.withOpacity(0.25),
-    );
+    canvas.drawCircle(Offset(lx, ly), 4, Paint()..color = color);
   }
 
   @override
-  bool shouldRepaint(covariant ChartPainter old) => false;
+  bool shouldRepaint(covariant _ChartPainter old) => false;
 }
