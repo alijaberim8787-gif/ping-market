@@ -16,9 +16,10 @@ const String cryptoEndpoint = '$backend/api/api/crypto/list';
 const Color goldColor = Color(0xFFD4AF37);
 const Color goldLight = Color(0xFFF4D03F);
 const Color goldDark = Color(0xFFB8860B);
-const Color darkBg = Color(0xFF000000);
-const Color darkCard = Color(0xFF1A1A1A);
-const Color darkCard2 = Color(0xFF242424);
+const Color darkBg = Color(0xFF0A0A0A);
+const Color darkCard = Color(0xFF151515);
+const Color darkCard2 = Color(0xFF1E1E1E);
+const Color darkCard3 = Color(0xFF252525);
 const Color greenUp = Color(0xFF4ADE80);
 const Color redDown = Color(0xFFEF4444);
 
@@ -34,18 +35,18 @@ class AssetMeta {
 }
 
 const Map<String, AssetMeta> assetCatalog = {
-  'USD_RLS': AssetMeta('🇺🇸', 'دلار آمریکا', 'US Dollar', 'currency'),
+  'USD_RLS': AssetMeta('🇺🇸', 'دلار', 'US Dollar', 'currency'),
   'EUR_RLS': AssetMeta('🇪🇺', 'یورو', 'Euro', 'currency'),
   'GBP_RLS': AssetMeta('🇬🇧', 'پوند انگلیس', 'British Pound', 'currency'),
   'AED_RLS': AssetMeta('🇦🇪', 'درهم امارات', 'UAE Dirham', 'currency'),
   'GOLD_18_RLS': AssetMeta('🪙', 'طلا (گرم ۱۸ عیار)', 'Gold 18K', 'gold'),
-  'COIN_EMAMI_RLS': AssetMeta('🪙', 'سکه امامی', 'Emami Coin', 'gold'),
+  'COIN_EMAMI_RLS': AssetMeta('🪙', 'سکه', 'Emami Coin', 'gold'),
   'BTC_RLS': AssetMeta('₿', 'بیت‌کوین', 'Bitcoin', 'crypto'),
   'ETH_RLS': AssetMeta('Ξ', 'اتریوم', 'Ethereum', 'crypto'),
 };
 
 // ═══════════════════════════════════════════════════════
-//  GLOBAL FAVORITES
+//  GLOBAL STATE
 // ═══════════════════════════════════════════════════════
 final ValueNotifier<Set<String>> favoritesNotifier = ValueNotifier({});
 
@@ -76,7 +77,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
   void initState() {
     super.initState();
     _load();
-    Timer(const Duration(milliseconds: 2500), () {
+    Timer(const Duration(milliseconds: 2800), () {
       if (mounted) setState(() => showSplash = false);
     });
   }
@@ -92,20 +93,6 @@ class _PingMarketAppState extends State<PingMarketApp> {
     });
   }
 
-  Future<void> _setDark(bool v) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool('dark', v);
-    if (mounted) {
-      setState(() => themeMode = v ? ThemeMode.dark : ThemeMode.light);
-    }
-  }
-
-  Future<void> _setLang(String v) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString('lang', v);
-    if (mounted) setState(() => locale = Locale(v));
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -117,12 +104,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
       locale: locale,
       home: showSplash
           ? const SplashScreen()
-          : MainNav(
-              dark: themeMode == ThemeMode.dark,
-              lang: locale.languageCode,
-              onDarkChanged: _setDark,
-              onLangChanged: _setLang,
-            ),
+          : const MainNav(),
     );
   }
 
@@ -132,10 +114,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
       useMaterial3: true,
       brightness: b,
       scaffoldBackgroundColor: isDark ? darkBg : const Color(0xFFF2F2F7),
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: goldColor,
-        brightness: b,
-      ),
+      colorScheme: ColorScheme.fromSeed(seedColor: goldColor, brightness: b),
       appBarTheme: AppBarTheme(
         backgroundColor: isDark ? darkBg : const Color(0xFFF2F2F7),
         elevation: 0,
@@ -147,7 +126,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  SPLASH
+//  SPLASH SCREEN
 // ═══════════════════════════════════════════════════════
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -158,17 +137,14 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
-  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    _c.forward();
+      duration: const Duration(milliseconds: 1800),
+    )..forward();
   }
 
   @override
@@ -180,40 +156,61 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: darkBg,
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: DecoratedBox(
+          // Globe glow at bottom
+          Positioned(
+            bottom: -100,
+            left: -50,
+            right: -50,
+            child: Container(
+              height: 500,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [goldColor.withOpacity(0.15), Colors.transparent],
-                  radius: 1.2,
+                  colors: [
+                    goldColor.withOpacity(0.35),
+                    goldColor.withOpacity(0.15),
+                    Colors.transparent,
+                  ],
+                  radius: 0.7,
                 ),
               ),
             ),
           ),
+          // Gold arc lines
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: CustomPaint(
+              size: Size(MediaQuery.of(context).size.width, 300),
+              painter: GlobePainter(),
+            ),
+          ),
+          // Content
           Center(
             child: FadeTransition(
-              opacity: _fade,
+              opacity: _c,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Logo container
                   Container(
-                    width: 130,
-                    height: 130,
+                    width: 110,
+                    height: 110,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(34),
-                      gradient: const LinearGradient(
-                        colors: [goldLight, goldColor, goldDark],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                      borderRadius: BorderRadius.circular(28),
+                      color: Colors.black,
+                      border: Border.all(
+                        color: goldColor.withOpacity(0.5),
+                        width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: goldColor.withOpacity(0.5),
+                          color: goldColor.withOpacity(0.4),
                           blurRadius: 40,
-                          spreadRadius: 4,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
@@ -221,14 +218,14 @@ class _SplashScreenState extends State<SplashScreen>
                     child: const Text(
                       'P',
                       style: TextStyle(
-                        fontSize: 76,
+                        fontSize: 64,
                         fontWeight: FontWeight.w900,
-                        color: Colors.black,
+                        color: goldColor,
                         height: 1,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   RichText(
                     text: const TextSpan(
                       children: [
@@ -236,7 +233,7 @@ class _SplashScreenState extends State<SplashScreen>
                           text: 'Ping ',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 34,
+                            fontSize: 32,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
                           ),
@@ -245,7 +242,7 @@ class _SplashScreenState extends State<SplashScreen>
                           text: 'Market',
                           style: TextStyle(
                             color: goldColor,
-                            fontSize: 34,
+                            fontSize: 32,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
                           ),
@@ -253,31 +250,14 @@ class _SplashScreenState extends State<SplashScreen>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   const Text(
-                    'بازار همیشه در دسترس',
+                    'Real-time Prices · Global Markets',
                     style: TextStyle(
                       color: Colors.white54,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
                     ),
-                  ),
-                  const SizedBox(height: 60),
-                  SizedBox(
-                    width: 160,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: const LinearProgressIndicator(
-                        backgroundColor: Color(0xFF2C2C2E),
-                        valueColor: AlwaysStoppedAnimation<Color>(goldColor),
-                        minHeight: 3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'در حال بارگذاری...',
-                    style: TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                 ],
               ),
@@ -289,23 +269,36 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
+class GlobePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = goldColor.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    final center = Offset(size.width / 2, size.height + 60);
+    for (int i = 0; i < 5; i++) {
+      final radius = 100.0 + i * 40;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        pi,
+        pi,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
 // ═══════════════════════════════════════════════════════
-//  MAIN NAV
+//  MAIN NAVIGATION
 // ═══════════════════════════════════════════════════════
 class MainNav extends StatefulWidget {
-  final bool dark;
-  final String lang;
-  final ValueChanged<bool> onDarkChanged;
-  final ValueChanged<String> onLangChanged;
-
-  const MainNav({
-    super.key,
-    required this.dark,
-    required this.lang,
-    required this.onDarkChanged,
-    required this.onLangChanged,
-  });
-
+  const MainNav({super.key});
   @override
   State<MainNav> createState() => _MainNavState();
 }
@@ -314,24 +307,20 @@ class _MainNavState extends State<MainNav> {
   int tab = 0;
   List<Map<String, dynamic>> assets = [];
   List<Map<String, dynamic>> cryptos = [];
-  bool loadingAssets = true;
-  bool loadingCryptos = true;
-  String? errorAssets;
-  String? errorCryptos;
+  bool loading = true;
+  String? error;
 
   @override
   void initState() {
     super.initState();
-    _loadAssets();
-    _loadCryptos();
+    _loadAll();
+  }
+
+  Future<void> _loadAll() async {
+    await Future.wait([_loadAssets(), _loadCryptos()]);
   }
 
   Future<void> _loadAssets() async {
-    if (!mounted) return;
-    setState(() {
-      loadingAssets = assets.isEmpty;
-      errorAssets = null;
-    });
     try {
       final r = await http
           .get(Uri.parse(assetsEndpoint),
@@ -345,23 +334,18 @@ class _MainNavState extends State<MainNav> {
       if (!mounted) return;
       setState(() {
         assets = list;
-        loadingAssets = false;
+        loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        loadingAssets = false;
-        errorAssets = 'خطا در دریافت قیمت‌های بازار';
+        loading = false;
+        error = 'خطا در دریافت قیمت‌ها';
       });
     }
   }
 
   Future<void> _loadCryptos() async {
-    if (!mounted) return;
-    setState(() {
-      loadingCryptos = cryptos.isEmpty;
-      errorCryptos = null;
-    });
     try {
       final r = await http
           .get(Uri.parse(cryptoEndpoint),
@@ -375,19 +359,15 @@ class _MainNavState extends State<MainNav> {
       if (!mounted) return;
       setState(() {
         cryptos = list;
-        loadingCryptos = false;
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        loadingCryptos = false;
-        errorCryptos = 'خطا در دریافت قیمت‌های کریپتو';
-      });
+      // Silent fail for cryptos
     }
   }
 
-  Future<void> _refreshAll() async {
-    await Future.wait([_loadAssets(), _loadCryptos()]);
+  Future<void> _refresh() async {
+    setState(() => loading = assets.isEmpty);
+    await _loadAll();
   }
 
   @override
@@ -396,70 +376,59 @@ class _MainNavState extends State<MainNav> {
       HomeTab(
         assets: assets,
         cryptos: cryptos,
-        loading: loadingAssets || loadingCryptos,
-        error: errorAssets ?? errorCryptos,
-        onRefresh: _refreshAll,
-        onSeeAll: () => setState(() => tab = 1),
+        loading: loading,
+        error: error,
+        onRefresh: _refresh,
         onOpenAsset: _openDetail,
+        onSeeAll: () => setState(() => tab = 1),
       ),
-      BazaarTab(
+      PricesTab(
         assets: assets,
         cryptos: cryptos,
-        loadingAssets: loadingAssets,
-        loadingCryptos: loadingCryptos,
-        errorAssets: errorAssets,
-        errorCryptos: errorCryptos,
-        onRefresh: _refreshAll,
+        loading: loading,
+        onRefresh: _refresh,
         onOpenAsset: _openDetail,
       ),
-      FavoritesTab(
+      WatchlistTab(
         assets: [...assets, ...cryptos],
         onOpenAsset: _openDetail,
+        onManage: () => setState(() => tab = 1),
       ),
       SettingsTab(
-        dark: widget.dark,
-        lang: widget.lang,
-        onDarkChanged: widget.onDarkChanged,
-        onLangChanged: widget.onLangChanged,
+        onOpenPrices: () => setState(() => tab = 1),
+        onOpenWatchlist: () => setState(() => tab = 2),
       ),
     ];
 
     return Scaffold(
       body: pages[tab],
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildNav(),
     );
   }
 
   void _openDetail(Map<String, dynamic> asset) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DetailScreen(asset: asset),
-      ),
+      MaterialPageRoute(builder: (_) => DetailScreen(asset: asset)),
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildNav() {
     final items = [
       {'icon': Icons.home_outlined, 'active': Icons.home_rounded, 'label': 'خانه'},
-      {'icon': Icons.show_chart_outlined, 'active': Icons.show_chart_rounded, 'label': 'بازار'},
-      {'icon': Icons.star_border_rounded, 'active': Icons.star_rounded, 'label': 'علاقه‌مندی‌ها'},
+      {'icon': Icons.bar_chart_outlined, 'active': Icons.bar_chart_rounded, 'label': 'قیمت‌ها'},
+      {'icon': Icons.list_alt_outlined, 'active': Icons.list_alt_rounded, 'label': 'واچ لیست'},
       {'icon': Icons.settings_outlined, 'active': Icons.settings_rounded, 'label': 'تنظیمات'},
     ];
 
     return Container(
-      decoration: BoxDecoration(
-        color: widget.dark ? darkCard : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: widget.dark ? Colors.white10 : Colors.black12,
-            width: 0.5,
-          ),
-        ),
+      decoration: const BoxDecoration(
+        color: darkBg,
+        border: Border(top: BorderSide(color: Colors.white10, width: 0.5)),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 68,
+          height: 70,
           child: Row(
             children: List.generate(items.length, (i) {
               final sel = tab == i;
@@ -471,9 +440,7 @@ class _MainNavState extends State<MainNav> {
                     children: [
                       Icon(
                         (sel ? items[i]['active'] : items[i]['icon']) as IconData,
-                        color: sel
-                            ? goldColor
-                            : (widget.dark ? Colors.white38 : Colors.black38),
+                        color: sel ? goldColor : Colors.white38,
                         size: 24,
                       ),
                       const SizedBox(height: 4),
@@ -481,9 +448,7 @@ class _MainNavState extends State<MainNav> {
                         items[i]['label'] as String,
                         style: TextStyle(
                           fontSize: 11,
-                          color: sel
-                              ? goldColor
-                              : (widget.dark ? Colors.white38 : Colors.black38),
+                          color: sel ? goldColor : Colors.white38,
                           fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
                         ),
                       ),
@@ -500,86 +465,59 @@ class _MainNavState extends State<MainNav> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  SHARED HELPERS
+//  HELPERS
 // ═══════════════════════════════════════════════════════
-bool isDark(BuildContext c) => Theme.of(c).brightness == Brightness.dark;
-
-Color cardBg(BuildContext c) => isDark(c) ? darkCard : Colors.white;
-Color cardBg2(BuildContext c) => isDark(c) ? darkCard2 : const Color(0xFFF2F2F7);
-Color txtPrimary(BuildContext c) => isDark(c) ? Colors.white : Colors.black;
-Color txtSecondary(BuildContext c) =>
-    isDark(c) ? Colors.white54 : Colors.black54;
-Color txtTertiary(BuildContext c) =>
-    isDark(c) ? Colors.white38 : Colors.black38;
-
-AssetMeta? metaFor(String? code) {
-  if (code == null) return null;
-  return assetCatalog[code];
-}
-
-bool isCrypto(Map<String, dynamic> a) {
-  final code = a['code']?.toString() ?? '';
-  return code.startsWith('CG_');
-}
-
 String displayLabel(Map<String, dynamic> a) {
   final code = a['code']?.toString() ?? '';
-  final meta = metaFor(code);
+  final meta = assetCatalog[code];
   if (meta != null) return meta.fa;
   return a['labelFa']?.toString() ?? a['labelEn']?.toString() ?? code;
 }
 
 String displayIcon(Map<String, dynamic> a) {
   final code = a['code']?.toString() ?? '';
-  final meta = metaFor(code);
+  final meta = assetCatalog[code];
   if (meta != null) return meta.icon;
   return a['icon']?.toString() ?? '🪙';
 }
 
-String displaySymbol(Map<String, dynamic> a) {
-  final symbol = a['symbol']?.toString();
-  if (symbol != null && symbol.isNotEmpty) return symbol;
-  final code = a['code']?.toString() ?? '';
-  if (code.startsWith('CG_')) return code.substring(3);
-  if (code.endsWith('_RLS')) return code.substring(0, code.length - 4);
-  return code;
+bool isCrypto(Map<String, dynamic> a) {
+  return (a['code']?.toString() ?? '').startsWith('CG_');
 }
 
-// Check if asset uses USD (crypto from CoinGecko)
-bool usesUsd(Map<String, dynamic> a) {
-  return a['quoteUnit']?.toString() == 'USD';
-}
-
-// Format USD price (for crypto)
-String formatUsd(dynamic value) {
-  if (value == null) return '—';
-  final n = (value as num).toDouble();
-  if (n >= 1000) {
-    return '\$${n.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
-  } else if (n >= 1) {
-    return '\$${n.toStringAsFixed(2)}';
-  } else if (n >= 0.01) {
-    return '\$${n.toStringAsFixed(4)}';
+String formatPrice(Map<String, dynamic> a) {
+  if (isCrypto(a)) {
+    final v = a['valueUsd'];
+    if (v == null) return '—';
+    final n = (v as num).toDouble();
+    if (n >= 1000) {
+      return n.toStringAsFixed(0).replaceAllMapped(
+            RegExp(r'(\d)(?=(\d{3})+$)'),
+            (m) => '${m[1]},',
+          );
+    } else if (n >= 1) {
+      return n.toStringAsFixed(2);
+    } else {
+      return n.toStringAsFixed(6);
+    }
   } else {
-    return '\$${n.toStringAsFixed(8)}';
+    final v = a['value'];
+    if (v == null) return '—';
+    final n = (v as num).toDouble() / 10; // toman
+    return n.toStringAsFixed(0).replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+$)'),
+          (m) => '${m[1]},',
+        );
   }
 }
 
-// Format toman/rial price (for Iranian market)
-String formatToman(dynamic value, bool toman) {
-  if (value == null) return '—';
-  final n = (value as num).toDouble();
-  final v = toman ? n / 10 : n;
-  return v.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+$)'),
-        (m) => '${m[1]},',
-      );
+String unitText(Map<String, dynamic> a) {
+  return isCrypto(a) ? 'دلار' : 'تومان';
 }
 
 double assetChange(Map<String, dynamic> a) {
   final c = a['change24h'];
   if (c is num) return c.toDouble();
-  // For Iranian assets, use stable pseudo
   final code = a['code']?.toString() ?? '';
   final h = code.hashCode.abs();
   return ((h % 500) - 200) / 100.0;
@@ -589,18 +527,15 @@ List<double> assetSparkline(Map<String, dynamic> a) {
   final sp = a['sparkline'];
   if (sp is List && sp.isNotEmpty) {
     final list = <double>[];
-    // Downsample if too many points
-    final step = max(1, sp.length ~/ 30);
+    final step = max(1, sp.length ~/ 25);
     for (int i = 0; i < sp.length; i += step) {
       final v = sp[i];
       if (v is num) list.add(v.toDouble());
     }
     if (list.length >= 2) return list;
   }
-  // Fallback pseudo
   final code = a['code']?.toString() ?? '';
-  final h = code.hashCode.abs();
-  final r = Random(h);
+  final r = Random(code.hashCode.abs());
   final list = <double>[];
   double v = 100.0;
   for (int i = 0; i < 20; i++) {
@@ -611,7 +546,7 @@ List<double> assetSparkline(Map<String, dynamic> a) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  SPARKLINE PAINTER
+//  SPARKLINE
 // ═══════════════════════════════════════════════════════
 class SparklinePainter extends CustomPainter {
   final List<double> data;
@@ -636,14 +571,15 @@ class SparklinePainter extends CustomPainter {
       }
     }
 
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.8
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    canvas.drawPath(path, paint);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..strokeWidth = 1.8
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
   }
 
   @override
@@ -655,16 +591,14 @@ class SparklinePainter extends CustomPainter {
 // ═══════════════════════════════════════════════════════
 class PriceCard extends StatelessWidget {
   final Map<String, dynamic> asset;
-  final bool toman;
-  final bool showChart;
   final VoidCallback onTap;
+  final bool showChevron;
 
   const PriceCard({
     super.key,
     required this.asset,
-    required this.toman,
     required this.onTap,
-    this.showChart = true,
+    this.showChevron = true,
   });
 
   @override
@@ -676,16 +610,13 @@ class PriceCard extends StatelessWidget {
     final isUp = change >= 0;
     final changeColor = isUp ? greenUp : redDown;
     final sparkline = assetSparkline(asset);
-    final crypto = isCrypto(asset);
-    final priceText = crypto
-        ? formatUsd(asset['valueUsd'] ?? asset['value'])
-        : formatToman(asset['value'], toman);
-    final unit = crypto ? 'USD' : (toman ? 'تومان' : 'ریال');
+    final price = formatPrice(asset);
+    final unit = unitText(asset);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: cardBg(context),
+        color: darkCard,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Material(
@@ -701,7 +632,7 @@ class PriceCard extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: cardBg2(context),
+                    color: darkCard2,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
@@ -709,7 +640,6 @@ class PriceCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 5,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -718,10 +648,10 @@ class PriceCard extends StatelessWidget {
                           Flexible(
                             child: Text(
                               label,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                                color: txtSecondary(context),
+                                color: Colors.white70,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -740,7 +670,7 @@ class PriceCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               color: changeColor,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
@@ -751,19 +681,19 @@ class PriceCard extends StatelessWidget {
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            priceText,
-                            style: TextStyle(
+                            price,
+                            style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
-                              color: txtPrimary(context),
+                              color: Colors.white,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             unit,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 11,
-                              color: txtTertiary(context),
+                              color: Colors.white38,
                             ),
                           ),
                         ],
@@ -771,20 +701,21 @@ class PriceCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (showChart)
-                  SizedBox(
-                    width: 60,
-                    height: 28,
-                    child: CustomPaint(
-                      painter: SparklinePainter(sparkline, changeColor),
-                    ),
+                SizedBox(
+                  width: 60,
+                  height: 28,
+                  child: CustomPaint(
+                    painter: SparklinePainter(sparkline, changeColor),
                   ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_left_rounded,
-                  color: txtTertiary(context),
-                  size: 20,
                 ),
+                if (showChevron) ...[
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.chevron_left_rounded,
+                    color: Colors.white38,
+                    size: 20,
+                  ),
+                ],
               ],
             ),
           ),
@@ -803,8 +734,8 @@ class HomeTab extends StatelessWidget {
   final bool loading;
   final String? error;
   final Future<void> Function() onRefresh;
-  final VoidCallback onSeeAll;
   final void Function(Map<String, dynamic>) onOpenAsset;
+  final VoidCallback onSeeAll;
 
   const HomeTab({
     super.key,
@@ -813,23 +744,32 @@ class HomeTab extends StatelessWidget {
     required this.loading,
     required this.error,
     required this.onRefresh,
-    required this.onSeeAll,
     required this.onOpenAsset,
+    required this.onSeeAll,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hotItems = <Map<String, dynamic>>[];
-    // First 3 from Iranian assets
-    for (final a in assets.take(3)) {
-      hotItems.add(a);
-    }
-    // Then BTC from crypto
-    final btc = cryptos.firstWhere(
-      (c) => c['symbol'] == 'BTC',
-      orElse: () => {},
+    // Featured: gold (big card at top)
+    final gold = assets.firstWhere(
+      (a) => a['code'] == 'GOLD_18_RLS',
+      orElse: () => assets.isNotEmpty ? assets.first : {},
     );
-    if (btc.isNotEmpty) hotItems.add(btc);
+
+    // Hot items: coin, dollar, BTC, ETH
+    final hot = <Map<String, dynamic>>[];
+    for (final code in ['COIN_EMAMI_RLS', 'USD_RLS', 'BTC_RLS', 'ETH_RLS']) {
+      final item = [...assets, ...cryptos].firstWhere(
+        (a) => a['code'] == code,
+        orElse: () => {},
+      );
+      if (item.isNotEmpty) hot.add(item);
+    }
+    // Fill from assets if not enough
+    for (final a in assets) {
+      if (hot.length >= 4) break;
+      if (!hot.any((h) => h['code'] == a['code'])) hot.add(a);
+    }
 
     return SafeArea(
       child: RefreshIndicator(
@@ -837,236 +777,306 @@ class HomeTab extends StatelessWidget {
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
           children: [
+            // Header: Ping Market + search + dots
             Row(
               children: [
-                IconButton(
-                  onPressed: () {},
-                  icon: Icon(Icons.notifications_none_rounded,
-                      color: txtPrimary(context)),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: darkCard,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: goldColor.withOpacity(0.3)),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'P',
+                    style: TextStyle(
+                      color: goldColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
                 ),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(width: 8),
+                RichText(
+                  text: const TextSpan(
                     children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [goldLight, goldColor, goldDark],
-                          ),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'P',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 17,
-                          ),
+                      TextSpan(
+                        text: 'Ping ',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Ping Market',
+                      TextSpan(
+                        text: 'Market',
                         style: TextStyle(
-                          color: txtPrimary(context),
-                          fontSize: 18,
+                          color: goldColor,
+                          fontSize: 17,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
                   ),
                 ),
+                const Spacer(),
                 IconButton(
                   onPressed: () {},
-                  icon: Icon(Icons.person_outline_rounded,
-                      color: txtPrimary(context)),
+                  icon: const Icon(Icons.search_rounded,
+                      color: Colors.white70, size: 22),
+                ),
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.more_horiz_rounded,
+                      color: Colors.white70, size: 22),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            _buildBanner(context),
-            const SizedBox(height: 18),
-            _buildQuickActions(context),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'قیمت‌های مهم',
-                  style: TextStyle(
-                    color: txtPrimary(context),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextButton(
-                  onPressed: onSeeAll,
-                  child: const Text(
-                    'مشاهده همه',
-                    style: TextStyle(color: goldColor, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            if (loading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child:
-                    Center(child: CircularProgressIndicator(color: goldColor)),
-              )
-            else if (error != null && hotItems.isEmpty)
-              _buildError(context)
-            else
-              ...hotItems.map((a) => PriceCard(
-                    asset: a,
-                    toman: true,
-                    onTap: () => onOpenAsset(a),
-                  )),
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 16),
 
-  Widget _buildBanner(BuildContext context) {
-    return Container(
-      height: 110,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A1500), Color(0xFF0A0A0A)],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        border: Border.all(color: goldColor.withOpacity(0.2), width: 0.5),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: CustomPaint(
-                painter: SparklinePainter(
-                  List.generate(30, (i) => 100 + (i * 1.5) + sin(i / 2) * 5),
-                  goldColor.withOpacity(0.35),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Big gold card
+            if (gold.isNotEmpty) _buildFeaturedGold(gold),
+            const SizedBox(height: 16),
+
+            // Quick actions row (3 items)
+            Row(
               children: [
-                Text(
-                  'سلام،',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.75),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                _quickAction('🪙', 'طلا', onTap: () => onSeeAll()),
+                const SizedBox(width: 10),
+                _quickAction('💲', 'دلار', onTap: () => onSeeAll()),
+                const SizedBox(width: 10),
+                _quickAction('🪙', 'سکه', onTap: () => onSeeAll()),
+              ],
+            ),
+            const SizedBox(height: 22),
+
+            // Section title
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: goldColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(width: 8),
                 const Text(
-                  'به پینگ مارکت خوش آمدید',
+                  'قیمت‌های مهم',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.all(40),
+                child: Center(
+                    child: CircularProgressIndicator(color: goldColor)),
+              )
+            else if (error != null && hot.isEmpty)
+              _buildError()
+            else
+              ...hot
+                  .map((a) => PriceCard(
+                        asset: a,
+                        onTap: () => onOpenAsset(a),
+                      ))
+                  .toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickAction(String icon, String label, {VoidCallback? onTap}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: darkCard,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 26)),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedGold(Map<String, dynamic> gold) {
+    final change = assetChange(gold);
+    final isUp = change >= 0;
+    final changeColor = isUp ? greenUp : redDown;
+    final price = formatPrice(gold);
+    final rawValue = gold['value'];
+    final changeAmount = rawValue is num
+        ? (rawValue.toDouble() * (change / 100) / 10).abs().toStringAsFixed(0)
+        : '0';
+
+    return GestureDetector(
+      onTap: () => onOpenAsset(gold),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1A1500), Color(0xFF0D0D0D)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: goldColor.withOpacity(0.25), width: 0.8),
+        ),
+        child: Stack(
+          children: [
+            // Background chart line
+            Positioned(
+              right: 0,
+              bottom: 0,
+              top: 0,
+              width: 160,
+              child: CustomPaint(
+                painter: SparklinePainter(
+                  assetSparkline(gold),
+                  goldColor.withOpacity(0.4),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   children: [
                     Container(
-                      width: 20,
-                      height: 3,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: goldColor,
-                        borderRadius: BorderRadius.circular(2),
+                        color: goldColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: goldColor.withOpacity(0.4), width: 1),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('🪙',
+                          style: TextStyle(fontSize: 24)),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'طلا',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'گرم ۱۸ عیار',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      price,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Container(
-                      width: 5,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: Colors.white30,
-                        borderRadius: BorderRadius.circular(2),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'تومان',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      isUp
+                          ? Icons.trending_up_rounded
+                          : Icons.trending_down_rounded,
+                      color: changeColor,
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
-                    Container(
-                      width: 5,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: Colors.white30,
-                        borderRadius: BorderRadius.circular(2),
+                    Text(
+                      '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
+                      style: TextStyle(
+                        color: changeColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '(${isUp ? "+" : ""}$changeAmount)',
+                      style: TextStyle(
+                        color: changeColor.withOpacity(0.7),
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    final actions = [
-      {'icon': '🪙', 'label': 'طلا'},
-      {'icon': '💵', 'label': 'ارزهای خارجی'},
-      {'icon': '💲', 'label': 'دلار'},
-      {'icon': '₿', 'label': 'بیت‌کوین'},
-    ];
-
-    return Row(
-      children: actions.map((a) {
-        return Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              color: cardBg(context),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              children: [
-                Text(a['icon']!, style: const TextStyle(fontSize: 26)),
-                const SizedBox(height: 6),
-                Text(
-                  a['label']!,
-                  style: TextStyle(
-                    color: txtSecondary(context),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildError(BuildContext context) {
+  Widget _buildError() {
     return Padding(
       padding: const EdgeInsets.all(40),
       child: Column(
         children: [
-          Icon(Icons.wifi_off_rounded, size: 50, color: txtTertiary(context)),
+          const Icon(Icons.wifi_off_rounded, size: 50, color: Colors.white38),
           const SizedBox(height: 12),
-          Text(error ?? 'خطا', style: TextStyle(color: txtSecondary(context))),
+          Text(error ?? 'خطا',
+              style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 12),
           FilledButton(
             onPressed: () => onRefresh(),
@@ -1080,241 +1090,114 @@ class HomeTab extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  BAZAAR TAB (with chip: Iran / Crypto)
+//  PRICES TAB (with tabs: همه / ارزهای دیجیتال / ارزهای بین‌المللی)
 // ═══════════════════════════════════════════════════════
-class BazaarTab extends StatefulWidget {
+class PricesTab extends StatefulWidget {
   final List<Map<String, dynamic>> assets;
   final List<Map<String, dynamic>> cryptos;
-  final bool loadingAssets;
-  final bool loadingCryptos;
-  final String? errorAssets;
-  final String? errorCryptos;
+  final bool loading;
   final Future<void> Function() onRefresh;
   final void Function(Map<String, dynamic>) onOpenAsset;
 
-  const BazaarTab({
+  const PricesTab({
     super.key,
     required this.assets,
     required this.cryptos,
-    required this.loadingAssets,
-    required this.loadingCryptos,
-    required this.errorAssets,
-    required this.errorCryptos,
+    required this.loading,
     required this.onRefresh,
     required this.onOpenAsset,
   });
 
   @override
-  State<BazaarTab> createState() => _BazaarTabState();
+  State<PricesTab> createState() => _PricesTabState();
 }
 
-class _BazaarTabState extends State<BazaarTab> {
-  int section = 0; // 0 = Iran, 1 = Crypto
-  String category = 'all';
-  final TextEditingController _search = TextEditingController();
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  List<Map<String, dynamic>> get currentSource =>
-      section == 0 ? widget.assets : widget.cryptos;
-
-  List<Map<String, dynamic>> get filtered {
-    final q = _search.text.trim().toLowerCase();
-    return currentSource.where((a) {
-      final code = a['code']?.toString() ?? '';
-      final meta = metaFor(code);
-      final cat = meta?.category ?? (code.startsWith('CG_') ? 'crypto' : 'other');
-      if (section == 0 && category != 'all' && cat != category) return false;
-      if (q.isEmpty) return true;
-      final label = displayLabel(a).toLowerCase();
-      final symbol = displaySymbol(a).toLowerCase();
-      return label.contains(q) ||
-          symbol.contains(q) ||
-          code.toLowerCase().contains(q);
-    }).toList();
-  }
+class _PricesTabState extends State<PricesTab> {
+  int category = 0; // 0=all, 1=crypto, 2=international
 
   @override
   Widget build(BuildContext context) {
-    final loading = section == 0 ? widget.loadingAssets : widget.loadingCryptos;
-    final error = section == 0 ? widget.errorAssets : widget.errorCryptos;
+    final all = [...widget.assets, ...widget.cryptos];
+    final filtered = () {
+      if (category == 0) return all;
+      if (category == 1)
+        return all.where((a) => isCrypto(a) || a['code'] == 'BTC_RLS').toList();
+      return all.where((a) => !isCrypto(a)).toList();
+    }();
 
     return SafeArea(
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'بازار',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: txtPrimary(context),
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => widget.onRefresh(),
+                  icon: const Icon(Icons.refresh_rounded,
+                      color: Colors.white70),
+                ),
+                const Expanded(
+                  child: Text(
+                    'دلار و ارزها',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 48),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-
-          // Section selector
+          const SizedBox(height: 12),
+          // Tabs
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: cardBg(context),
+                color: darkCard,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() {
-                        section = 0;
-                        category = 'all';
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: section == 0
-                              ? goldColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'ارز و طلا',
-                          style: TextStyle(
-                            color: section == 0
-                                ? Colors.black
-                                : txtSecondary(context),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() {
-                        section = 1;
-                        category = 'all';
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: section == 1
-                              ? goldColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'کریپتو',
-                          style: TextStyle(
-                            color: section == 1
-                                ? Colors.black
-                                : txtSecondary(context),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _tab('ارزهای بین‌المللی', 2),
+                  _tab('ارزهای دیجیتال', 1),
+                  _tab('همه', 0),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 12),
-
-          // Search
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: cardBg(context),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: TextField(
-                controller: _search,
-                onChanged: (_) => setState(() {}),
-                style: TextStyle(color: txtPrimary(context), fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: section == 0
-                      ? 'جستجو در بازار...'
-                      : 'جستجو در کریپتو...',
-                  hintStyle:
-                      TextStyle(color: txtTertiary(context), fontSize: 13),
-                  prefixIcon: Icon(Icons.search_rounded,
-                      color: txtTertiary(context)),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Category chips (only for Iran section)
-          if (section == 0)
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _chip('همه', 'all'),
-                  _chip('ارزها', 'currency'),
-                  _chip('طلا و سکه', 'gold'),
-                ],
-              ),
-            ),
-
-          const SizedBox(height: 8),
-
-          // List
           Expanded(
             child: RefreshIndicator(
               color: goldColor,
               onRefresh: widget.onRefresh,
-              child: loading
+              child: widget.loading
                   ? const Center(
                       child: CircularProgressIndicator(color: goldColor))
-                  : (error != null && filtered.isEmpty)
-                      ? _errorView(error)
-                      : filtered.isEmpty
-                          ? ListView(
-                              children: [
-                                const SizedBox(height: 80),
-                                Center(
-                                  child: Text(
-                                    'موردی یافت نشد',
-                                    style: TextStyle(
-                                        color: txtSecondary(context)),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : ListView(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                              children: filtered
-                                  .map((a) => PriceCard(
-                                        asset: a,
-                                        toman: true,
-                                        onTap: () =>
-                                            widget.onOpenAsset(a),
-                                      ))
-                                  .toList(),
+                  : filtered.isEmpty
+                      ? ListView(
+                          children: const [
+                            SizedBox(height: 80),
+                            Center(
+                              child: Text('موردی یافت نشد',
+                                  style: TextStyle(color: Colors.white70)),
                             ),
+                          ],
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                          children: filtered
+                              .map((a) => PriceCard(
+                                    asset: a,
+                                    onTap: () => widget.onOpenAsset(a),
+                                  ))
+                              .toList(),
+                        ),
             ),
           ),
         ],
@@ -1322,54 +1205,27 @@ class _BazaarTabState extends State<BazaarTab> {
     );
   }
 
-  Widget _errorView(String? err) {
-    return ListView(
-      children: [
-        const SizedBox(height: 80),
-        Center(
-          child: Column(
-            children: [
-              Icon(Icons.wifi_off_rounded,
-                  size: 50, color: txtTertiary(context)),
-              const SizedBox(height: 12),
-              Text(err ?? 'خطا',
-                  style: TextStyle(color: txtSecondary(context))),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () => widget.onRefresh(),
-                style: FilledButton.styleFrom(backgroundColor: goldColor),
-                child: const Text('تلاش دوباره'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _chip(String label, String value) {
+  Widget _tab(String label, int value) {
     final sel = category == value;
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
+    return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => category = value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: sel ? goldColor : cardBg(context),
-            borderRadius: BorderRadius.circular(20),
-            border: sel
-                ? null
-                : Border.all(color: txtTertiary(context).withOpacity(0.2)),
+            color: sel ? goldColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: sel ? Colors.black : txtPrimary(context),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              color: sel ? Colors.black : Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -1378,30 +1234,27 @@ class _BazaarTabState extends State<BazaarTab> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  FAVORITES TAB
+//  WATCHLIST TAB
 // ═══════════════════════════════════════════════════════
-class FavoritesTab extends StatefulWidget {
+class WatchlistTab extends StatelessWidget {
   final List<Map<String, dynamic>> assets;
   final void Function(Map<String, dynamic>) onOpenAsset;
+  final VoidCallback onManage;
 
-  const FavoritesTab({
+  const WatchlistTab({
     super.key,
     required this.assets,
     required this.onOpenAsset,
+    required this.onManage,
   });
 
-  @override
-  State<FavoritesTab> createState() => _FavoritesTabState();
-}
-
-class _FavoritesTabState extends State<FavoritesTab> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: ValueListenableBuilder<Set<String>>(
         valueListenable: favoritesNotifier,
         builder: (context, favs, _) {
-          final items = widget.assets
+          final items = assets
               .where((a) => favs.contains(a['code']?.toString()))
               .toList();
 
@@ -1409,30 +1262,41 @@ class _FavoritesTabState extends State<FavoritesTab> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(
-                  'علاقه‌مندی‌ها',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: txtPrimary(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.star_border_rounded,
+                          color: Colors.white70),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'واچ لیست',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               if (items.isEmpty)
-                Expanded(
+                const Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.star_border_rounded,
-                            size: 60, color: txtTertiary(context)),
-                        const SizedBox(height: 12),
+                            size: 60, color: Colors.white24),
+                        SizedBox(height: 12),
                         Text(
-                          'هنوز ارزی به علاقه‌مندی‌ها اضافه نشده است',
-                          style: TextStyle(
-                              color: txtSecondary(context), fontSize: 13),
+                          'هنوز ارزی به واچ لیست اضافه نشده',
+                          style: TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                       ],
                     ),
@@ -1445,12 +1309,39 @@ class _FavoritesTabState extends State<FavoritesTab> {
                     children: items
                         .map((a) => PriceCard(
                               asset: a,
-                              toman: true,
-                              onTap: () => widget.onOpenAsset(a),
+                              onTap: () => onOpenAsset(a),
                             ))
                         .toList(),
                   ),
                 ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: GestureDetector(
+                  onTap: onManage,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: darkCard,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_rounded, color: Colors.white70, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'مدیریت واچ لیست',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -1462,170 +1353,264 @@ class _FavoritesTabState extends State<FavoritesTab> {
 // ═══════════════════════════════════════════════════════
 //  SETTINGS TAB
 // ═══════════════════════════════════════════════════════
-class SettingsTab extends StatelessWidget {
-  final bool dark;
-  final String lang;
-  final ValueChanged<bool> onDarkChanged;
-  final ValueChanged<String> onLangChanged;
+class SettingsTab extends StatefulWidget {
+  final VoidCallback onOpenPrices;
+  final VoidCallback onOpenWatchlist;
 
   const SettingsTab({
     super.key,
-    required this.dark,
-    required this.lang,
-    required this.onDarkChanged,
-    required this.onLangChanged,
+    required this.onOpenPrices,
+    required this.onOpenWatchlist,
   });
+
+  @override
+  State<SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends State<SettingsTab> {
+  bool darkMode = true;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
         children: [
-          Text(
-            'حساب کاربری',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: txtPrimary(context),
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardBg(context),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
+          // Logo header
+          Center(
+            child: Column(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [goldLight, goldColor, goldDark],
-                    ),
+                    color: darkCard,
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: goldColor.withOpacity(0.3)),
                   ),
                   alignment: Alignment.center,
                   child: const Text(
                     'P',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: goldColor,
                       fontWeight: FontWeight.w900,
-                      fontSize: 28,
+                      fontSize: 32,
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(height: 12),
+                RichText(
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Ping ',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Market',
+                        style: TextStyle(
+                          color: goldColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Real-time Prices · Global Markets',
+                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          _menuItem(
+            icon: Icons.bar_chart_rounded,
+            label: 'قیمت‌ها',
+            onTap: widget.onOpenPrices,
+          ),
+          const SizedBox(height: 8),
+          _menuItem(
+            icon: Icons.star_border_rounded,
+            label: 'واچ لیست',
+            onTap: widget.onOpenWatchlist,
+          ),
+          const SizedBox(height: 8),
+          _menuItem(
+            icon: Icons.settings_outlined,
+            label: 'تنظیمات',
+            onTap: () => _showSettingsDialog(),
+          ),
+          const SizedBox(height: 8),
+          _menuItem(
+            icon: Icons.info_outline_rounded,
+            label: 'درباره ما',
+            onTap: () => _showAbout(),
+          ),
+          const SizedBox(height: 30),
+
+          // Bottom card: "دنیای بازارها"
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1A1500), Color(0xFF0D0D0D)],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: goldColor.withOpacity(0.2), width: 0.8),
+            ),
+            child: Row(
+              children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Ping Market',
+                      const Text(
+                        'دنیای بازارها',
                         style: TextStyle(
-                          color: txtPrimary(context),
+                          color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'نسخه ۱.۰.۰',
+                      const SizedBox(height: 6),
+                      const Text(
+                        'همیشه در دسترس',
                         style: TextStyle(
-                          color: txtSecondary(context),
+                          color: Colors.white54,
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_left_rounded, color: txtTertiary(context)),
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: goldColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'P',
+                    style: TextStyle(
+                      color: goldColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 26,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          _group(context, [
-            _item(context,
-                icon: Icons.notifications_none_rounded, label: 'اطلاعیه‌ها'),
-            _item(context,
-                icon: Icons.tune_rounded, label: 'تنظیمات اعلان‌ها'),
-            _item(
-              context,
-              icon: Icons.dark_mode_outlined,
-              label: 'تغییر تم',
-              trailing: Switch(
-                value: dark,
-                activeColor: goldColor,
-                onChanged: onDarkChanged,
-              ),
-            ),
-            _item(
-              context,
-              icon: Icons.language_rounded,
-              label: 'زبان',
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    lang == 'fa' ? 'فارسی' : 'English',
-                    style: TextStyle(
-                        color: txtSecondary(context), fontSize: 13),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    lang == 'fa' ? '🇮🇷' : '🇬🇧',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ],
-              ),
-            ),
-            _item(context,
-                icon: Icons.support_agent_rounded, label: 'پشتیبانی'),
-            _item(context,
-                icon: Icons.info_outline_rounded, label: 'درباره ما'),
-          ]),
         ],
       ),
     );
   }
 
-  Widget _group(BuildContext context, List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg(context),
-        borderRadius: BorderRadius.circular(16),
+  Widget _menuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: darkCard,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: goldColor, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_left_rounded,
+                color: Colors.white38, size: 20),
+          ],
+        ),
       ),
-      child: Column(children: children),
     );
   }
 
-  Widget _item(BuildContext context,
-      {required IconData icon, required String label, Widget? trailing}) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon, color: txtSecondary(context), size: 22),
-          title: Text(
-            label,
-            style: TextStyle(
-              color: txtPrimary(context),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+  void _showAbout() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: darkCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('درباره ما', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Ping Market\nنسخه ۱.۰.۰\n\nقیمت لحظه‌ای ارز، طلا و ارزهای دیجیتال\n\nmrpingshop.ir',
+          style: TextStyle(color: Colors.white70, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('بستن', style: TextStyle(color: goldColor)),
           ),
-          trailing: trailing ??
-              Icon(Icons.chevron_left_rounded, color: txtTertiary(context)),
+        ],
+      ),
+    );
+  }
+
+  void _showSettingsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: darkCard,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'تنظیمات',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                title: const Text('حالت تاریک',
+                    style: TextStyle(color: Colors.white)),
+                value: darkMode,
+                activeColor: goldColor,
+                onChanged: (v) {
+                  setState(() => darkMode = v);
+                  setSheet(() {});
+                },
+              ),
+            ],
+          ),
         ),
-        Divider(
-          height: 1,
-          color: txtTertiary(context).withOpacity(0.1),
-          indent: 56,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -1643,6 +1628,43 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   String range = '1D';
+  bool isFavorite = false;
+
+  @override
+  void initState() {
+    super.initState();
+    isFavorite =
+        favoritesNotifier.value.contains(widget.asset['code']?.toString());
+    favoritesNotifier.addListener(_onFavChange);
+  }
+
+  @override
+  void dispose() {
+    favoritesNotifier.removeListener(_onFavChange);
+    super.dispose();
+  }
+
+  void _onFavChange() {
+    if (mounted) {
+      setState(() {
+        isFavorite = favoritesNotifier.value
+            .contains(widget.asset['code']?.toString());
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final code = widget.asset['code']?.toString() ?? '';
+    final newSet = Set<String>.from(favoritesNotifier.value);
+    if (newSet.contains(code)) {
+      newSet.remove(code);
+    } else {
+      newSet.add(code);
+    }
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('favorites', newSet.toList());
+    favoritesNotifier.value = newSet;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1652,68 +1674,47 @@ class _DetailScreenState extends State<DetailScreen> {
     final change = assetChange(widget.asset);
     final isUp = change >= 0;
     final changeColor = isUp ? greenUp : redDown;
-    final crypto = isCrypto(widget.asset);
-
-    final price = crypto
-        ? formatUsd(widget.asset['valueUsd'] ?? widget.asset['value'])
-        : formatToman(widget.asset['value'], true);
-
-    final unit = crypto ? 'USD' : 'تومان';
+    final price = formatPrice(widget.asset);
+    final unit = unitText(widget.asset);
 
     final rawValue = widget.asset['value'];
     final changeAmount = rawValue is num
-        ? rawValue.toDouble() * (change / 100)
-        : 0.0;
+        ? (rawValue.toDouble() * (change / 100) / 10).abs().toStringAsFixed(0)
+        : '0';
 
-    final sparkline = assetSparkline(widget.asset);
-    // For detail screen, extend sparkline
-    final detailData = sparkline.length >= 30
-        ? sparkline
-        : List.generate(40, (i) {
-            final base = sparkline.isEmpty
-                ? 100.0
-                : sparkline[i % sparkline.length];
-            return base;
-          });
+    final baseSpark = assetSparkline(widget.asset);
+    final detailData = List.generate(40, (i) {
+      final base = baseSpark.isEmpty ? 100.0 : baseSpark[i % baseSpark.length];
+      return base;
+    });
+
+    // High/low values
+    final highVal = detailData.reduce(max);
+    final lowVal = detailData.reduce(min);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: darkBg,
       appBar: AppBar(
+        backgroundColor: darkBg,
         leading: IconButton(
-          icon: Icon(Icons.arrow_forward_rounded, color: txtPrimary(context)),
+          icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           label,
-          style: TextStyle(
-            color: txtPrimary(context),
+          style: const TextStyle(
+            color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
         actions: [
-          ValueListenableBuilder<Set<String>>(
-            valueListenable: favoritesNotifier,
-            builder: (context, favs, _) {
-              final isFav = favs.contains(code);
-              return IconButton(
-                onPressed: () async {
-                  final newSet = Set<String>.from(favs);
-                  if (isFav) {
-                    newSet.remove(code);
-                  } else {
-                    newSet.add(code);
-                  }
-                  final p = await SharedPreferences.getInstance();
-                  await p.setStringList('favorites', newSet.toList());
-                  favoritesNotifier.value = newSet;
-                },
-                icon: Icon(
-                  isFav ? Icons.star_rounded : Icons.star_border_rounded,
-                  color: goldColor,
-                ),
-              );
-            },
+          IconButton(
+            onPressed: _toggleFavorite,
+            icon: Icon(
+              isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: goldColor,
+            ),
           ),
         ],
       ),
@@ -1721,89 +1722,110 @@ class _DetailScreenState extends State<DetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: cardBg(context),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(icon, style: const TextStyle(fontSize: 30)),
+            // Header price
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A1500), Color(0xFF0D0D0D)],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: txtSecondary(context),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                borderRadius: BorderRadius.circular(20),
+                border:
+                    Border.all(color: goldColor.withOpacity(0.25), width: 0.8),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: goldColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: goldColor.withOpacity(0.4), width: 1),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(icon, style: const TextStyle(fontSize: 30)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            price,
-                            style: TextStyle(
-                              color: txtPrimary(context),
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              price,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            unit,
-                            style: TextStyle(
-                              color: txtTertiary(context),
-                              fontSize: 12,
+                            const SizedBox(width: 6),
+                            Text(
+                              unit,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(
-                  isUp
-                      ? Icons.trending_up_rounded
-                      : Icons.trending_down_rounded,
-                  color: changeColor,
-                  size: 18,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
-                  style: TextStyle(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    isUp
+                        ? Icons.trending_up_rounded
+                        : Icons.trending_down_rounded,
                     color: changeColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    size: 18,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '(${isUp ? "+" : ""}${changeAmount.abs().toStringAsFixed(0)})',
-                  style: TextStyle(
-                    color: changeColor.withOpacity(0.7),
-                    fontSize: 12,
+                  const SizedBox(width: 4),
+                  Text(
+                    '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
+                    style: TextStyle(
+                      color: changeColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Text(
+                    '(${isUp ? "+" : ""}$changeAmount)',
+                    style: TextStyle(
+                      color: changeColor.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
+
+            // Range selector
             Row(
               children: ['1D', '1W', '1M', '3M', '1Y'].map((r) {
                 final sel = range == r;
@@ -1812,19 +1834,18 @@ class _DetailScreenState extends State<DetailScreen> {
                     onTap: () => setState(() => range = r),
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 3),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: sel ? goldColor : cardBg(context),
+                        color: sel ? goldColor : darkCard,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         r,
                         style: TextStyle(
-                          color:
-                              sel ? Colors.black : txtSecondary(context),
+                          color: sel ? Colors.black : Colors.white70,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -1833,46 +1854,84 @@ class _DetailScreenState extends State<DetailScreen> {
               }).toList(),
             ),
             const SizedBox(height: 20),
+
+            // Chart with y-axis labels
             Container(
-              height: 200,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: cardBg(context),
+                color: darkCard,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: CustomPaint(
-                painter: ChartPainter(detailData, changeColor),
-                child: const SizedBox.expand(),
+              child: Row(
+                children: [
+                  SizedBox(
+                    height: 180,
+                    width: 50,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(highVal.toStringAsFixed(1),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 9)),
+                        Text(((highVal + lowVal) / 2).toStringAsFixed(1),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 9)),
+                        Text(lowVal.toStringAsFixed(1),
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 9)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SizedBox(
+                      height: 180,
+                      child: CustomPaint(
+                        painter: ChartPainter(detailData, changeColor),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: ['09:00', '12:00', '15:00', '18:00']
-                  .map((t) => Text(
-                        t,
-                        style: TextStyle(
-                          color: txtTertiary(context),
-                          fontSize: 10,
-                        ),
-                      ))
-                  .toList(),
+
+            // Time labels
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 60),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('09:00',
+                      style: TextStyle(color: Colors.white38, fontSize: 10)),
+                  Text('12:00',
+                      style: TextStyle(color: Colors.white38, fontSize: 10)),
+                  Text('15:00',
+                      style: TextStyle(color: Colors.white38, fontSize: 10)),
+                  Text('18:00',
+                      style: TextStyle(color: Colors.white38, fontSize: 10)),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
+
+            // Stats
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: cardBg(context),
+                color: darkCard,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: [
-                  _statRow(context, 'بیشترین قیمت', price, goldColor),
-                  _divider(context),
-                  _statRow(context, 'کمترین قیمت', price, goldColor),
-                  _divider(context),
+                  _statRow('قیمت فعلی', price, Colors.white),
+                  _divider(),
+                  _statRow('بالاترین قیمت', price, Colors.white),
+                  _divider(),
+                  _statRow('پایین‌ترین قیمت', price, Colors.white),
+                  _divider(),
                   _statRow(
-                    context,
                     'تغییرات روزانه',
                     '${isUp ? "+" : ""}${change.toStringAsFixed(2)}%',
                     changeColor,
@@ -1881,57 +1940,47 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            ValueListenableBuilder<Set<String>>(
-              valueListenable: favoritesNotifier,
-              builder: (context, favs, _) {
-                final isFav = favs.contains(code);
-                return GestureDetector(
-                  onTap: () async {
-                    final newSet = Set<String>.from(favs);
-                    if (isFav) {
-                      newSet.remove(code);
-                    } else {
-                      newSet.add(code);
-                    }
-                    final p = await SharedPreferences.getInstance();
-                    await p.setStringList('favorites', newSet.toList());
-                    favoritesNotifier.value = newSet;
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [goldLight, goldColor, goldDark],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isFav
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color: Colors.black,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isFav
-                              ? 'حذف از علاقه‌مندی‌ها'
-                              : 'افزودن به علاقه‌مندی‌ها',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+
+            // Add to watchlist button
+            GestureDetector(
+              onTap: _toggleFavorite,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isFavorite
+                        ? [const Color(0xFF2A2A2A), const Color(0xFF1A1A1A)]
+                        : [goldLight, goldColor, goldDark],
                   ),
-                );
-              },
+                  borderRadius: BorderRadius.circular(16),
+                  border: isFavorite
+                      ? Border.all(color: goldColor.withOpacity(0.5))
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isFavorite
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: isFavorite ? goldColor : Colors.black,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isFavorite
+                          ? 'حذف از واچ لیست'
+                          : 'افزودن به واچ لیست',
+                      style: TextStyle(
+                        color: isFavorite ? goldColor : Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -1939,8 +1988,7 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _statRow(
-      BuildContext context, String label, String value, Color color) {
+  Widget _statRow(String label, String value, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -1948,7 +1996,7 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(color: txtSecondary(context), fontSize: 13),
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
           Text(
             value,
@@ -1963,14 +2011,14 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _divider(BuildContext context) {
-    return Divider(
-      height: 1,
-      color: txtTertiary(context).withOpacity(0.1),
-    );
+  Widget _divider() {
+    return Divider(height: 1, color: Colors.white.withOpacity(0.05));
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  CHART PAINTER
+// ═══════════════════════════════════════════════════════
 class ChartPainter extends CustomPainter {
   final List<double> data;
   final Color color;
@@ -1982,6 +2030,15 @@ class ChartPainter extends CustomPainter {
     final minV = data.reduce(min);
     final maxV = data.reduce(max);
     final range = (maxV - minV) == 0 ? 1 : (maxV - minV);
+
+    // Grid
+    final gridPaint = Paint()
+      ..color = Colors.white.withOpacity(0.05)
+      ..strokeWidth = 0.5;
+    for (int i = 0; i <= 4; i++) {
+      final y = (i / 4) * size.height;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
 
     final linePath = Path();
     final fillPath = Path();
@@ -2001,22 +2058,37 @@ class ChartPainter extends CustomPainter {
     fillPath.lineTo(size.width, size.height);
     fillPath.close();
 
-    final fillPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [color.withOpacity(0.3), color.withOpacity(0.0)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(fillPath, fillPaint);
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [color.withOpacity(0.35), color.withOpacity(0.0)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+        ..style = PaintingStyle.fill,
+    );
 
-    final linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 2.2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(linePath, linePaint);
+    canvas.drawPath(
+      linePath,
+      Paint()
+        ..color = color
+        ..strokeWidth = 2.2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    // Last point dot
+    final lastX = size.width;
+    final lastY =
+        size.height - ((data.last - minV) / range) * (size.height - 10) - 5;
+    canvas.drawCircle(Offset(lastX, lastY), 4, Paint()..color = color);
+    canvas.drawCircle(
+      Offset(lastX, lastY),
+      8,
+      Paint()..color = color.withOpacity(0.25),
+    );
   }
 
   @override
