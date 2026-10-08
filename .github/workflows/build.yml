@@ -29,12 +29,15 @@ jobs:
 
       - name: Fix AGP and Kotlin versions
         run: |
-          # آپدیت AGP به 8.5.2
           sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
-          # آپدیت Kotlin
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
-          # آپدیت نسخه Gradle wrapper
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Add INTERNET permission
+        run: |
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
+          echo "--- AndroidManifest.xml ---"
+          cat android/app/src/main/AndroidManifest.xml
 
       - name: Build APK
         run: flutter build apk --release
