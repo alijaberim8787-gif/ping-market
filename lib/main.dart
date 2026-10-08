@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ═══════════════════════════════════════════════════════
 const String backend = 'https://mrpingshop.ir';
 const String assetsEndpoint = '$backend/api/api/assets';
+const String cryptoEndpoint = '$backend/api/api/crypto/list';
 
 const Color goldColor = Color(0xFFD4AF37);
 const Color goldLight = Color(0xFFF4D03F);
@@ -22,7 +23,7 @@ const Color greenUp = Color(0xFF4ADE80);
 const Color redDown = Color(0xFFEF4444);
 
 // ═══════════════════════════════════════════════════════
-//  ASSET CATALOG (metadata for known codes)
+//  ASSET CATALOG
 // ═══════════════════════════════════════════════════════
 class AssetMeta {
   final String icon;
@@ -41,7 +42,6 @@ const Map<String, AssetMeta> assetCatalog = {
   'COIN_EMAMI_RLS': AssetMeta('🪙', 'سکه امامی', 'Emami Coin', 'gold'),
   'BTC_RLS': AssetMeta('₿', 'بیت‌کوین', 'Bitcoin', 'crypto'),
   'ETH_RLS': AssetMeta('Ξ', 'اتریوم', 'Ethereum', 'crypto'),
-  'OIL_RLS': AssetMeta('🛢', 'نفت خام', 'Crude Oil', 'energy'),
 };
 
 // ═══════════════════════════════════════════════════════
@@ -95,7 +95,9 @@ class _PingMarketAppState extends State<PingMarketApp> {
   Future<void> _setDark(bool v) async {
     final p = await SharedPreferences.getInstance();
     await p.setBool('dark', v);
-    if (mounted) setState(() => themeMode = v ? ThemeMode.dark : ThemeMode.light);
+    if (mounted) {
+      setState(() => themeMode = v ? ThemeMode.dark : ThemeMode.light);
+    }
   }
 
   Future<void> _setLang(String v) async {
@@ -181,15 +183,11 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: darkBg,
       body: Stack(
         children: [
-          // Golden glow background
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [
-                    goldColor.withOpacity(0.15),
-                    Colors.transparent,
-                  ],
+                  colors: [goldColor.withOpacity(0.15), Colors.transparent],
                   radius: 1.2,
                 ),
               ),
@@ -201,7 +199,6 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo
                   Container(
                     width: 130,
                     height: 130,
@@ -316,20 +313,24 @@ class MainNav extends StatefulWidget {
 class _MainNavState extends State<MainNav> {
   int tab = 0;
   List<Map<String, dynamic>> assets = [];
-  bool loading = true;
-  String? error;
+  List<Map<String, dynamic>> cryptos = [];
+  bool loadingAssets = true;
+  bool loadingCryptos = true;
+  String? errorAssets;
+  String? errorCryptos;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadAssets();
+    _loadCryptos();
   }
 
-  Future<void> _load() async {
+  Future<void> _loadAssets() async {
     if (!mounted) return;
     setState(() {
-      loading = assets.isEmpty;
-      error = null;
+      loadingAssets = assets.isEmpty;
+      errorAssets = null;
     });
     try {
       final r = await http
@@ -344,15 +345,49 @@ class _MainNavState extends State<MainNav> {
       if (!mounted) return;
       setState(() {
         assets = list;
-        loading = false;
+        loadingAssets = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        loading = false;
-        error = 'خطا در دریافت اطلاعات';
+        loadingAssets = false;
+        errorAssets = 'خطا در دریافت قیمت‌های بازار';
       });
     }
+  }
+
+  Future<void> _loadCryptos() async {
+    if (!mounted) return;
+    setState(() {
+      loadingCryptos = cryptos.isEmpty;
+      errorCryptos = null;
+    });
+    try {
+      final r = await http
+          .get(Uri.parse(cryptoEndpoint),
+              headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 20));
+      if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
+      final data = jsonDecode(r.body) as Map<String, dynamic>;
+      final list = (data['assets'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        cryptos = list;
+        loadingCryptos = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        loadingCryptos = false;
+        errorCryptos = 'خطا در دریافت قیمت‌های کریپتو';
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([_loadAssets(), _loadCryptos()]);
   }
 
   @override
@@ -360,20 +395,25 @@ class _MainNavState extends State<MainNav> {
     final pages = [
       HomeTab(
         assets: assets,
-        loading: loading,
-        error: error,
-        onRefresh: _load,
+        cryptos: cryptos,
+        loading: loadingAssets || loadingCryptos,
+        error: errorAssets ?? errorCryptos,
+        onRefresh: _refreshAll,
         onSeeAll: () => setState(() => tab = 1),
         onOpenAsset: _openDetail,
       ),
       BazaarTab(
         assets: assets,
-        loading: loading,
-        onRefresh: _load,
+        cryptos: cryptos,
+        loadingAssets: loadingAssets,
+        loadingCryptos: loadingCryptos,
+        errorAssets: errorAssets,
+        errorCryptos: errorCryptos,
+        onRefresh: _refreshAll,
         onOpenAsset: _openDetail,
       ),
       FavoritesTab(
-        assets: assets,
+        assets: [...assets, ...cryptos],
         onOpenAsset: _openDetail,
       ),
       SettingsTab(
@@ -477,7 +517,56 @@ AssetMeta? metaFor(String? code) {
   return assetCatalog[code];
 }
 
-String formatPrice(dynamic value, bool toman) {
+bool isCrypto(Map<String, dynamic> a) {
+  final code = a['code']?.toString() ?? '';
+  return code.startsWith('CG_');
+}
+
+String displayLabel(Map<String, dynamic> a) {
+  final code = a['code']?.toString() ?? '';
+  final meta = metaFor(code);
+  if (meta != null) return meta.fa;
+  return a['labelFa']?.toString() ?? a['labelEn']?.toString() ?? code;
+}
+
+String displayIcon(Map<String, dynamic> a) {
+  final code = a['code']?.toString() ?? '';
+  final meta = metaFor(code);
+  if (meta != null) return meta.icon;
+  return a['icon']?.toString() ?? '🪙';
+}
+
+String displaySymbol(Map<String, dynamic> a) {
+  final symbol = a['symbol']?.toString();
+  if (symbol != null && symbol.isNotEmpty) return symbol;
+  final code = a['code']?.toString() ?? '';
+  if (code.startsWith('CG_')) return code.substring(3);
+  if (code.endsWith('_RLS')) return code.substring(0, code.length - 4);
+  return code;
+}
+
+// Check if asset uses USD (crypto from CoinGecko)
+bool usesUsd(Map<String, dynamic> a) {
+  return a['quoteUnit']?.toString() == 'USD';
+}
+
+// Format USD price (for crypto)
+String formatUsd(dynamic value) {
+  if (value == null) return '—';
+  final n = (value as num).toDouble();
+  if (n >= 1000) {
+    return '\$${n.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+  } else if (n >= 1) {
+    return '\$${n.toStringAsFixed(2)}';
+  } else if (n >= 0.01) {
+    return '\$${n.toStringAsFixed(4)}';
+  } else {
+    return '\$${n.toStringAsFixed(8)}';
+  }
+}
+
+// Format toman/rial price (for Iranian market)
+String formatToman(dynamic value, bool toman) {
   if (value == null) return '—';
   final n = (value as num).toDouble();
   final v = toman ? n / 10 : n;
@@ -487,19 +576,34 @@ String formatPrice(dynamic value, bool toman) {
       );
 }
 
-double pseudoChange(String code) {
-  // Stable pseudo-change for display (backend doesn't provide it)
+double assetChange(Map<String, dynamic> a) {
+  final c = a['change24h'];
+  if (c is num) return c.toDouble();
+  // For Iranian assets, use stable pseudo
+  final code = a['code']?.toString() ?? '';
   final h = code.hashCode.abs();
-  return ((h % 500) - 200) / 100.0; // -2.00 .. +3.00
+  return ((h % 500) - 200) / 100.0;
 }
 
-List<double> pseudoSparkline(String code, int count) {
+List<double> assetSparkline(Map<String, dynamic> a) {
+  final sp = a['sparkline'];
+  if (sp is List && sp.isNotEmpty) {
+    final list = <double>[];
+    // Downsample if too many points
+    final step = max(1, sp.length ~/ 30);
+    for (int i = 0; i < sp.length; i += step) {
+      final v = sp[i];
+      if (v is num) list.add(v.toDouble());
+    }
+    if (list.length >= 2) return list;
+  }
+  // Fallback pseudo
+  final code = a['code']?.toString() ?? '';
   final h = code.hashCode.abs();
   final r = Random(h);
-  final base = 100.0;
   final list = <double>[];
-  double v = base;
-  for (int i = 0; i < count; i++) {
+  double v = 100.0;
+  for (int i = 0; i < 20; i++) {
     v += (r.nextDouble() - 0.45) * 2;
     list.add(v);
   }
@@ -516,7 +620,7 @@ class SparklinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
+    if (data.length < 2) return;
     final minV = data.reduce(min);
     final maxV = data.reduce(max);
     final range = (maxV - minV) == 0 ? 1 : (maxV - minV);
@@ -566,13 +670,17 @@ class PriceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final code = asset['code']?.toString() ?? '';
-    final meta = metaFor(code);
-    final label = meta?.fa ?? asset['labelFa']?.toString() ?? code;
-    final icon = asset['icon']?.toString() ?? meta?.icon ?? '💱';
-    final change = pseudoChange(code);
+    final label = displayLabel(asset);
+    final icon = displayIcon(asset);
+    final change = assetChange(asset);
     final isUp = change >= 0;
     final changeColor = isUp ? greenUp : redDown;
-    final sparkline = pseudoSparkline(code, 20);
+    final sparkline = assetSparkline(asset);
+    final crypto = isCrypto(asset);
+    final priceText = crypto
+        ? formatUsd(asset['valueUsd'] ?? asset['value'])
+        : formatToman(asset['value'], toman);
+    final unit = crypto ? 'USD' : (toman ? 'تومان' : 'ریال');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -589,7 +697,6 @@ class PriceCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(
               children: [
-                // Icon
                 Container(
                   width: 44,
                   height: 44,
@@ -601,8 +708,6 @@ class PriceCard extends StatelessWidget {
                   child: Text(icon, style: const TextStyle(fontSize: 22)),
                 ),
                 const SizedBox(width: 12),
-
-                // Name + price
                 Expanded(
                   flex: 5,
                   child: Column(
@@ -646,7 +751,7 @@ class PriceCard extends StatelessWidget {
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            formatPrice(asset['value'], toman),
+                            priceText,
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
@@ -655,7 +760,7 @@ class PriceCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            toman ? 'تومان' : 'ریال',
+                            unit,
                             style: TextStyle(
                               fontSize: 11,
                               color: txtTertiary(context),
@@ -666,8 +771,6 @@ class PriceCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Sparkline
                 if (showChart)
                   SizedBox(
                     width: 60,
@@ -676,7 +779,6 @@ class PriceCard extends StatelessWidget {
                       painter: SparklinePainter(sparkline, changeColor),
                     ),
                   ),
-
                 const SizedBox(width: 4),
                 Icon(
                   Icons.chevron_left_rounded,
@@ -697,6 +799,7 @@ class PriceCard extends StatelessWidget {
 // ═══════════════════════════════════════════════════════
 class HomeTab extends StatelessWidget {
   final List<Map<String, dynamic>> assets;
+  final List<Map<String, dynamic>> cryptos;
   final bool loading;
   final String? error;
   final Future<void> Function() onRefresh;
@@ -706,6 +809,7 @@ class HomeTab extends StatelessWidget {
   const HomeTab({
     super.key,
     required this.assets,
+    required this.cryptos,
     required this.loading,
     required this.error,
     required this.onRefresh,
@@ -715,6 +819,18 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hotItems = <Map<String, dynamic>>[];
+    // First 3 from Iranian assets
+    for (final a in assets.take(3)) {
+      hotItems.add(a);
+    }
+    // Then BTC from crypto
+    final btc = cryptos.firstWhere(
+      (c) => c['symbol'] == 'BTC',
+      orElse: () => {},
+    );
+    if (btc.isNotEmpty) hotItems.add(btc);
+
     return SafeArea(
       child: RefreshIndicator(
         color: goldColor,
@@ -723,15 +839,12 @@ class HomeTab extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           children: [
-            // Top bar
             Row(
               children: [
                 IconButton(
                   onPressed: () {},
-                  icon: Icon(
-                    Icons.notifications_none_rounded,
-                    color: txtPrimary(context),
-                  ),
+                  icon: Icon(Icons.notifications_none_rounded,
+                      color: txtPrimary(context)),
                 ),
                 Expanded(
                   child: Row(
@@ -770,24 +883,16 @@ class HomeTab extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () {},
-                  icon: Icon(
-                    Icons.person_outline_rounded,
-                    color: txtPrimary(context),
-                  ),
+                  icon: Icon(Icons.person_outline_rounded,
+                      color: txtPrimary(context)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-
-            // Banner
             _buildBanner(context),
             const SizedBox(height: 18),
-
-            // Quick actions
             _buildQuickActions(context),
             const SizedBox(height: 20),
-
-            // Section header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -809,17 +914,16 @@ class HomeTab extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-
-            // Assets
             if (loading)
               const Padding(
                 padding: EdgeInsets.all(40),
-                child: Center(child: CircularProgressIndicator(color: goldColor)),
+                child:
+                    Center(child: CircularProgressIndicator(color: goldColor)),
               )
-            else if (error != null && assets.isEmpty)
+            else if (error != null && hotItems.isEmpty)
               _buildError(context)
             else
-              ...assets.map((a) => PriceCard(
+              ...hotItems.map((a) => PriceCard(
                     asset: a,
                     toman: true,
                     onTap: () => onOpenAsset(a),
@@ -844,13 +948,12 @@ class HomeTab extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Decorative chart line
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: CustomPaint(
                 painter: SparklinePainter(
-                  pseudoSparkline('banner', 30),
+                  List.generate(30, (i) => 100 + (i * 1.5) + sin(i / 2) * 5),
                   goldColor.withOpacity(0.35),
                 ),
               ),
@@ -963,7 +1066,7 @@ class HomeTab extends StatelessWidget {
         children: [
           Icon(Icons.wifi_off_rounded, size: 50, color: txtTertiary(context)),
           const SizedBox(height: 12),
-          Text(error!, style: TextStyle(color: txtSecondary(context))),
+          Text(error ?? 'خطا', style: TextStyle(color: txtSecondary(context))),
           const SizedBox(height: 12),
           FilledButton(
             onPressed: () => onRefresh(),
@@ -977,18 +1080,26 @@ class HomeTab extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  BAZAAR TAB
+//  BAZAAR TAB (with chip: Iran / Crypto)
 // ═══════════════════════════════════════════════════════
 class BazaarTab extends StatefulWidget {
   final List<Map<String, dynamic>> assets;
-  final bool loading;
+  final List<Map<String, dynamic>> cryptos;
+  final bool loadingAssets;
+  final bool loadingCryptos;
+  final String? errorAssets;
+  final String? errorCryptos;
   final Future<void> Function() onRefresh;
   final void Function(Map<String, dynamic>) onOpenAsset;
 
   const BazaarTab({
     super.key,
     required this.assets,
-    required this.loading,
+    required this.cryptos,
+    required this.loadingAssets,
+    required this.loadingCryptos,
+    required this.errorAssets,
+    required this.errorCryptos,
     required this.onRefresh,
     required this.onOpenAsset,
   });
@@ -998,6 +1109,7 @@ class BazaarTab extends StatefulWidget {
 }
 
 class _BazaarTabState extends State<BazaarTab> {
+  int section = 0; // 0 = Iran, 1 = Crypto
   String category = 'all';
   final TextEditingController _search = TextEditingController();
 
@@ -1007,51 +1119,123 @@ class _BazaarTabState extends State<BazaarTab> {
     super.dispose();
   }
 
+  List<Map<String, dynamic>> get currentSource =>
+      section == 0 ? widget.assets : widget.cryptos;
+
   List<Map<String, dynamic>> get filtered {
     final q = _search.text.trim().toLowerCase();
-    return widget.assets.where((a) {
+    return currentSource.where((a) {
       final code = a['code']?.toString() ?? '';
       final meta = metaFor(code);
-      final cat = meta?.category ?? 'other';
-      if (category != 'all' && cat != category) return false;
+      final cat = meta?.category ?? (code.startsWith('CG_') ? 'crypto' : 'other');
+      if (section == 0 && category != 'all' && cat != category) return false;
       if (q.isEmpty) return true;
-      final label = (meta?.fa ?? a['labelFa']?.toString() ?? '').toLowerCase();
-      return label.contains(q) || code.toLowerCase().contains(q);
+      final label = displayLabel(a).toLowerCase();
+      final symbol = displaySymbol(a).toLowerCase();
+      return label.contains(q) ||
+          symbol.contains(q) ||
+          code.toLowerCase().contains(q);
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final loading = section == 0 ? widget.loadingAssets : widget.loadingCryptos;
+    final error = section == 0 ? widget.errorAssets : widget.errorCryptos;
+
     return SafeArea(
       child: Column(
         children: [
-          // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.arrow_forward_rounded,
-                      color: txtPrimary(context)),
-                ),
-                Expanded(
-                  child: Text(
-                    'بازار',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: txtPrimary(context),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 48),
-              ],
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'بازار',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: txtPrimary(context),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
+          const SizedBox(height: 8),
 
-          // Search bar
+          // Section selector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: cardBg(context),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        section = 0;
+                        category = 'all';
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: section == 0
+                              ? goldColor
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'ارز و طلا',
+                          style: TextStyle(
+                            color: section == 0
+                                ? Colors.black
+                                : txtSecondary(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        section = 1;
+                        category = 'all';
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: section == 1
+                              ? goldColor
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'کریپتو',
+                          style: TextStyle(
+                            color: section == 1
+                                ? Colors.black
+                                : txtSecondary(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Search
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -1064,10 +1248,13 @@ class _BazaarTabState extends State<BazaarTab> {
                 onChanged: (_) => setState(() {}),
                 style: TextStyle(color: txtPrimary(context), fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'جستجو در بازار...',
-                  hintStyle: TextStyle(color: txtTertiary(context), fontSize: 13),
-                  prefixIcon:
-                      Icon(Icons.search_rounded, color: txtTertiary(context)),
+                  hintText: section == 0
+                      ? 'جستجو در بازار...'
+                      : 'جستجو در کریپتو...',
+                  hintStyle:
+                      TextStyle(color: txtTertiary(context), fontSize: 13),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: txtTertiary(context)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -1076,53 +1263,87 @@ class _BazaarTabState extends State<BazaarTab> {
           ),
           const SizedBox(height: 12),
 
-          // Categories
-          SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _chip('همه', 'all'),
-                _chip('ارزها', 'currency'),
-                _chip('طلا و سکه', 'gold'),
-                _chip('ارز دیجیتال', 'crypto'),
-              ],
+          // Category chips (only for Iran section)
+          if (section == 0)
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _chip('همه', 'all'),
+                  _chip('ارزها', 'currency'),
+                  _chip('طلا و سکه', 'gold'),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 8),
 
           // List
           Expanded(
             child: RefreshIndicator(
               color: goldColor,
               onRefresh: widget.onRefresh,
-              child: filtered.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 80),
-                        Center(
-                          child: Text(
-                            'موردی یافت نشد',
-                            style: TextStyle(color: txtSecondary(context)),
-                          ),
-                        ),
-                      ],
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                      children: filtered
-                          .map((a) => PriceCard(
-                                asset: a,
-                                toman: true,
-                                onTap: () => widget.onOpenAsset(a),
-                              ))
-                          .toList(),
-                    ),
+              child: loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: goldColor))
+                  : (error != null && filtered.isEmpty)
+                      ? _errorView(error)
+                      : filtered.isEmpty
+                          ? ListView(
+                              children: [
+                                const SizedBox(height: 80),
+                                Center(
+                                  child: Text(
+                                    'موردی یافت نشد',
+                                    style: TextStyle(
+                                        color: txtSecondary(context)),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                              children: filtered
+                                  .map((a) => PriceCard(
+                                        asset: a,
+                                        toman: true,
+                                        onTap: () =>
+                                            widget.onOpenAsset(a),
+                                      ))
+                                  .toList(),
+                            ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _errorView(String? err) {
+    return ListView(
+      children: [
+        const SizedBox(height: 80),
+        Center(
+          child: Column(
+            children: [
+              Icon(Icons.wifi_off_rounded,
+                  size: 50, color: txtTertiary(context)),
+              const SizedBox(height: 12),
+              Text(err ?? 'خطا',
+                  style: TextStyle(color: txtSecondary(context))),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () => widget.onRefresh(),
+                style: FilledButton.styleFrom(backgroundColor: goldColor),
+                child: const Text('تلاش دوباره'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1174,8 +1395,6 @@ class FavoritesTab extends StatefulWidget {
 }
 
 class _FavoritesTabState extends State<FavoritesTab> {
-  String category = 'all';
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -1190,33 +1409,17 @@ class _FavoritesTabState extends State<FavoritesTab> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 40,
-                      child: IconButton(
-                        onPressed: items.isEmpty ? null : () {},
-                        icon: Icon(Icons.edit_outlined,
-                            color: txtPrimary(context)),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'علاقه‌مندی‌ها',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: txtPrimary(context),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                  ],
+                child: Text(
+                  'علاقه‌مندی‌ها',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: txtPrimary(context),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-
               if (items.isEmpty)
                 Expanded(
                   child: Center(
@@ -1228,8 +1431,8 @@ class _FavoritesTabState extends State<FavoritesTab> {
                         const SizedBox(height: 12),
                         Text(
                           'هنوز ارزی به علاقه‌مندی‌ها اضافه نشده است',
-                          style:
-                              TextStyle(color: txtSecondary(context), fontSize: 13),
+                          style: TextStyle(
+                              color: txtSecondary(context), fontSize: 13),
                         ),
                       ],
                     ),
@@ -1289,8 +1492,6 @@ class SettingsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-
-          // Profile card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1342,17 +1543,16 @@ class SettingsTab extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_left_rounded,
-                    color: txtTertiary(context)),
+                Icon(Icons.chevron_left_rounded, color: txtTertiary(context)),
               ],
             ),
           ),
           const SizedBox(height: 20),
-
-          // Settings list
           _group(context, [
-            _item(context, icon: Icons.notifications_none_rounded, label: 'اطلاعیه‌ها'),
-            _item(context, icon: Icons.tune_rounded, label: 'تنظیمات اعلان‌ها'),
+            _item(context,
+                icon: Icons.notifications_none_rounded, label: 'اطلاعیه‌ها'),
+            _item(context,
+                icon: Icons.tune_rounded, label: 'تنظیمات اعلان‌ها'),
             _item(
               context,
               icon: Icons.dark_mode_outlined,
@@ -1372,7 +1572,8 @@ class SettingsTab extends StatelessWidget {
                 children: [
                   Text(
                     lang == 'fa' ? 'فارسی' : 'English',
-                    style: TextStyle(color: txtSecondary(context), fontSize: 13),
+                    style: TextStyle(
+                        color: txtSecondary(context), fontSize: 13),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1382,61 +1583,11 @@ class SettingsTab extends StatelessWidget {
                 ],
               ),
             ),
-            _item(context, icon: Icons.support_agent_rounded, label: 'پشتیبانی'),
-            _item(context, icon: Icons.info_outline_rounded, label: 'درباره ما'),
+            _item(context,
+                icon: Icons.support_agent_rounded, label: 'پشتیبانی'),
+            _item(context,
+                icon: Icons.info_outline_rounded, label: 'درباره ما'),
           ]),
-          const SizedBox(height: 16),
-
-          // Logout
-          GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  backgroundColor: cardBg(context),
-                  title: Text('خروج از حساب',
-                      style: TextStyle(color: txtPrimary(context))),
-                  content: Text('آیا مطمئن هستید؟',
-                      style: TextStyle(color: txtSecondary(context))),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('خیر',
-                          style: TextStyle(color: goldColor)),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('بله',
-                          style: TextStyle(color: goldColor)),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: cardBg(context),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.logout_rounded,
-                      color: txtPrimary(context), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'خروج از حساب',
-                    style: TextStyle(
-                      color: txtPrimary(context),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1496,16 +1647,34 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   Widget build(BuildContext context) {
     final code = widget.asset['code']?.toString() ?? '';
-    final meta = metaFor(code);
-    final label = meta?.fa ?? widget.asset['labelFa']?.toString() ?? code;
-    final icon = widget.asset['icon']?.toString() ?? meta?.icon ?? '💱';
-    final change = pseudoChange(code);
+    final label = displayLabel(widget.asset);
+    final icon = displayIcon(widget.asset);
+    final change = assetChange(widget.asset);
     final isUp = change >= 0;
     final changeColor = isUp ? greenUp : redDown;
-    final price = formatPrice(widget.asset['value'], true);
-    final changeAmount = (widget.asset['value'] is num)
-        ? (widget.asset['value'] as num).toDouble() * (change / 100) / 10
+    final crypto = isCrypto(widget.asset);
+
+    final price = crypto
+        ? formatUsd(widget.asset['valueUsd'] ?? widget.asset['value'])
+        : formatToman(widget.asset['value'], true);
+
+    final unit = crypto ? 'USD' : 'تومان';
+
+    final rawValue = widget.asset['value'];
+    final changeAmount = rawValue is num
+        ? rawValue.toDouble() * (change / 100)
         : 0.0;
+
+    final sparkline = assetSparkline(widget.asset);
+    // For detail screen, extend sparkline
+    final detailData = sparkline.length >= 30
+        ? sparkline
+        : List.generate(40, (i) {
+            final base = sparkline.isEmpty
+                ? 100.0
+                : sparkline[i % sparkline.length];
+            return base;
+          });
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -1552,7 +1721,6 @@ class _DetailScreenState extends State<DetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           children: [
-            // Asset icon + price
             Row(
               children: [
                 Container(
@@ -1593,7 +1761,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            'تومان',
+                            unit,
                             style: TextStyle(
                               color: txtTertiary(context),
                               fontSize: 12,
@@ -1607,12 +1775,12 @@ class _DetailScreenState extends State<DetailScreen> {
               ],
             ),
             const SizedBox(height: 12),
-
-            // Change
             Row(
               children: [
                 Icon(
-                  isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                  isUp
+                      ? Icons.trending_up_rounded
+                      : Icons.trending_down_rounded,
                   color: changeColor,
                   size: 18,
                 ),
@@ -1627,7 +1795,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '(${isUp ? "+" : ""}${changeAmount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')})',
+                  '(${isUp ? "+" : ""}${changeAmount.abs().toStringAsFixed(0)})',
                   style: TextStyle(
                     color: changeColor.withOpacity(0.7),
                     fontSize: 12,
@@ -1636,8 +1804,6 @@ class _DetailScreenState extends State<DetailScreen> {
               ],
             ),
             const SizedBox(height: 20),
-
-            // Range selector
             Row(
               children: ['1D', '1W', '1M', '3M', '1Y'].map((r) {
                 final sel = range == r;
@@ -1655,7 +1821,8 @@ class _DetailScreenState extends State<DetailScreen> {
                       child: Text(
                         r,
                         style: TextStyle(
-                          color: sel ? Colors.black : txtSecondary(context),
+                          color:
+                              sel ? Colors.black : txtSecondary(context),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1666,8 +1833,6 @@ class _DetailScreenState extends State<DetailScreen> {
               }).toList(),
             ),
             const SizedBox(height: 20),
-
-            // Chart
             Container(
               height: 200,
               padding: const EdgeInsets.all(12),
@@ -1676,16 +1841,11 @@ class _DetailScreenState extends State<DetailScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: CustomPaint(
-                painter: ChartPainter(
-                  pseudoSparkline(code, 40),
-                  changeColor,
-                ),
+                painter: ChartPainter(detailData, changeColor),
                 child: const SizedBox.expand(),
               ),
             ),
             const SizedBox(height: 8),
-
-            // Time labels
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: ['09:00', '12:00', '15:00', '18:00']
@@ -1699,8 +1859,6 @@ class _DetailScreenState extends State<DetailScreen> {
                   .toList(),
             ),
             const SizedBox(height: 20),
-
-            // Stats box
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1713,8 +1871,6 @@ class _DetailScreenState extends State<DetailScreen> {
                   _divider(context),
                   _statRow(context, 'کمترین قیمت', price, goldColor),
                   _divider(context),
-                  _statRow(context, 'حجم معاملات', '1.2M', goldColor),
-                  _divider(context),
                   _statRow(
                     context,
                     'تغییرات روزانه',
@@ -1725,8 +1881,6 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Add to favorites button
             ValueListenableBuilder<Set<String>>(
               valueListenable: favoritesNotifier,
               builder: (context, favs, _) {
@@ -1785,7 +1939,8 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _statRow(BuildContext context, String label, String value, Color color) {
+  Widget _statRow(
+      BuildContext context, String label, String value, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -1816,9 +1971,6 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-//  CHART PAINTER (for detail screen)
-// ═══════════════════════════════════════════════════════
 class ChartPainter extends CustomPainter {
   final List<double> data;
   final Color color;
@@ -1826,7 +1978,7 @@ class ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
+    if (data.length < 2) return;
     final minV = data.reduce(min);
     final maxV = data.reduce(max);
     final range = (maxV - minV) == 0 ? 1 : (maxV - minV);
@@ -1837,7 +1989,8 @@ class ChartPainter extends CustomPainter {
 
     for (int i = 0; i < data.length; i++) {
       final x = (i / (data.length - 1)) * size.width;
-      final y = size.height - ((data[i] - minV) / range) * (size.height - 10) - 5;
+      final y =
+          size.height - ((data[i] - minV) / range) * (size.height - 10) - 5;
       if (i == 0) {
         linePath.moveTo(x, y);
       } else {
@@ -1848,7 +2001,6 @@ class ChartPainter extends CustomPainter {
     fillPath.lineTo(size.width, size.height);
     fillPath.close();
 
-    // Fill
     final fillPaint = Paint()
       ..shader = LinearGradient(
         colors: [color.withOpacity(0.3), color.withOpacity(0.0)],
@@ -1858,7 +2010,6 @@ class ChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawPath(fillPath, fillPaint);
 
-    // Line
     final linePaint = Paint()
       ..color = color
       ..strokeWidth = 2.2
