@@ -64,6 +64,12 @@ class S {
     'addToWatch': ['افزودن به علاقه‌مندی‌ها', 'Add to Favorites'],
     'removeFromWatch': ['حذف از علاقه‌مندی‌ها', 'Remove from Favorites'],
     'noFavs': ['هنوز چیزی اضافه نکردی', 'Nothing added yet'],
+    'noResults': ['موردی یافت نشد', 'No results found'],
+    'loading': ['در حال دریافت اطلاعات...', 'Loading data...'],
+    'retry': ['تلاش دوباره', 'Retry'],
+    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای ارزها، طلا و ارزهای دیجیتال است.\n\nنسخه ۱.۰.۰', 'Ping Market is a platform to view live prices of currencies, gold, and crypto.\n\nVersion 1.0.0'],
+    'supportText': ['برای ارتباط با پشتیبانی به وب‌سایت ما مراجعه کنید:\n\nmrpingshop.ir', 'Contact support via our website:\n\nmrpingshop.ir'],
+    'privacyText': ['اطلاعات شما در این اپلیکیشن کاملاً محرمانه باقی می‌ماند و هیچ داده‌ای بدون اجازه شما ارسال نمی‌شود.', 'Your data is completely private. No data is sent without your permission.'],
   };
 
   static String get(String key, String lang) {
@@ -154,6 +160,7 @@ class MarketAsset {
 }
 
 final ValueNotifier<int> shellTab = ValueNotifier(0);
+final ValueNotifier<int> pricesFilter = ValueNotifier(0);
 
 class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [];
@@ -183,14 +190,20 @@ class AppState extends ChangeNotifier {
     loading = iran.isEmpty && crypto.isEmpty;
     error = null;
     notifyListeners();
-    await Future.wait([_loadAssets(), _loadCrypto()]);
-    loading = false;
-    notifyListeners();
+
+    try {
+      await Future.wait([_loadAssets(), _loadCrypto()]);
+    } catch (e) {
+      error = 'Connection failed';
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> _loadAssets() async {
     try {
-      final r = await http.get(Uri.parse(kAssetsUrl)).timeout(const Duration(seconds: 15));
+      final r = await http.get(Uri.parse(kAssetsUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 15));
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         if (data['assets'] != null) {
@@ -200,13 +213,13 @@ class AppState extends ChangeNotifier {
         error = 'Server error: ${r.statusCode}';
       }
     } catch (e) {
-      error = 'Connection failed';
+      error = 'Failed to load Iran market data';
     }
   }
 
   Future<void> _loadCrypto() async {
     try {
-      final r = await http.get(Uri.parse(kCryptoUrl)).timeout(const Duration(seconds: 20));
+      final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 20));
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         if (data['assets'] != null) {
@@ -281,7 +294,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
             appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
           ),
           locale: Locale(appState.lang),
-          home: const AppShell(),
+          home: const AppShell(), // حذف const برای رفرش شدن
         );
       },
     );
@@ -303,7 +316,12 @@ class AppShell extends StatelessWidget {
           extendBody: true,
           body: IndexedStack(
             index: index,
-            children: const [HomeTab(), PricesTab(), FavoritesTab(), SettingsTab()],
+            children: [ // حذف const برای رفرش شدن دکمه‌ها
+              const HomeTab(),
+              const PricesTab(),
+              const FavoritesTab(),
+              const SettingsTab(),
+            ],
           ),
           bottomNavigationBar: _FloatingNav(
             index: index,
@@ -513,14 +531,36 @@ class HomeTab extends StatelessWidget {
             // Top Bar
             Row(
               children: [
-                Stack(
-                  children: [
-                    GlassCard(
-                      padding: const EdgeInsets.all(10),
-                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white),
-                    ),
-                    Positioned(right: 10, top: 10, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.red, shape: BoxShape.circle))),
-                  ],
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: C.surface,
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                      builder: (_) => Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.notifications_none_rounded, color: C.primaryPurple, size: 40),
+                            const SizedBox(height: 16),
+                            Text(t('notifications'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            const Text('اعلان جدیدی وجود ندارد.', style: TextStyle(color: C.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Stack(
+                    children: [
+                      GlassCard(
+                        padding: const EdgeInsets.all(10),
+                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+                      ),
+                      Positioned(right: 10, top: 10, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.red, shape: BoxShape.circle))),
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 Column(
@@ -533,7 +573,7 @@ class HomeTab extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Text('Real-time Prices · Global Markets', style: TextStyle(color: C.textSecondary, fontSize: 10)),
+                    const Text('Real-time Prices', style: TextStyle(color: C.textSecondary, fontSize: 10)),
                   ],
                 ),
                 const Spacer(),
@@ -597,25 +637,21 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Search
-            GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.search_rounded, color: C.textSecondary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: t('searchHint'),
-                        hintStyle: const TextStyle(color: C.textTertiary),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.tune_rounded, color: C.textSecondary),
-                ],
+            // Search (Navigates to Prices Tab)
+            GestureDetector(
+              onTap: () {
+                shellTab.value = 1; // Go to Prices
+              },
+              child: GlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded, color: C.textSecondary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(t('searchHint'), style: const TextStyle(color: C.textTertiary))),
+                    const Icon(Icons.tune_rounded, color: C.textSecondary),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -624,10 +660,10 @@ class HomeTab extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _quickAction(Icons.diamond_rounded, t('gold'), C.gold),
-                _quickAction(Icons.attach_money_rounded, t('dollar'), C.green),
-                _quickAction(Icons.currency_bitcoin_rounded, t('bitcoin'), Colors.orange),
-                _quickAction(Icons.grid_view_rounded, t('allMarkets'), Colors.blueAccent),
+                _quickAction(context, Icons.diamond_rounded, t('gold'), C.gold, 0),
+                _quickAction(context, Icons.attach_money_rounded, t('dollar'), C.green, 0),
+                _quickAction(context, Icons.currency_bitcoin_rounded, t('bitcoin'), Colors.orange, 1),
+                _quickAction(context, Icons.grid_view_rounded, t('allMarkets'), Colors.blueAccent, 2),
               ],
             ),
             
@@ -636,6 +672,8 @@ class HomeTab extends StatelessWidget {
             // Quick list preview
             if (appState.loading)
               const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: C.primaryPurple)))
+            else if (appState.error != null && appState.all.isEmpty)
+              Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(appState.error!, style: const TextStyle(color: C.red))))
             else
               ...appState.all.take(4).map((a) => _homePriceRow(context, a)),
           ],
@@ -644,6 +682,25 @@ class HomeTab extends StatelessWidget {
     );
   }
   
+  Widget _quickAction(BuildContext context, IconData icon, String label, Color color, int filter) {
+    return GestureDetector(
+      onTap: () {
+        pricesFilter.value = filter;
+        shellTab.value = 1;
+      },
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 30),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _homePriceRow(BuildContext context, MarketAsset a) {
     final isUp = a.change >= 0;
     return GestureDetector(
@@ -682,19 +739,6 @@ class HomeTab extends StatelessWidget {
       ),
     );
   }
-
-  Widget _quickAction(IconData icon, String label, Color color) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 30),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
-        ],
-      ),
-    );
-  }
 }
 
 class _BannerChartPainter extends CustomPainter {
@@ -721,14 +765,36 @@ class PricesTab extends StatefulWidget {
 }
 
 class _PricesTabState extends State<PricesTab> {
-  int _filter = 0;
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    pricesFilter.addListener(_onFilterChange);
+  }
+
+  @override
+  void dispose() {
+    pricesFilter.removeListener(_onFilterChange);
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onFilterChange() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
     final t = appState.t;
+    int currentFilter = pricesFilter.value;
+    
     List<MarketAsset> list = appState.all;
-    if (_filter == 1) list = appState.iran;
-    if (_filter == 2) list = appState.crypto;
+    if (currentFilter == 1) list = appState.iran;
+    if (currentFilter == 2) list = appState.crypto;
+    
+    if (_query.isNotEmpty) {
+      list = list.where((a) => a.displayLabelFor(appState.lang).toLowerCase().contains(_query.toLowerCase())).toList();
+    }
 
     return SafeArea(
       bottom: false,
@@ -745,14 +811,33 @@ class _PricesTabState extends State<PricesTab> {
               ],
             ),
           ),
+          // Search Field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: (v) => setState(() => _query = v),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: t('searchHint'),
+                  hintStyle: const TextStyle(color: C.textTertiary),
+                  border: InputBorder.none,
+                  icon: const Icon(Icons.search_rounded, color: C.textSecondary),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           // Filter Pills
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                _filterPill(t('all'), 0),
-                _filterPill(t('currency'), 1),
-                _filterPill(t('crypto'), 2),
+                _filterPill(t('all'), 0, currentFilter),
+                _filterPill(t('currency'), 1, currentFilter),
+                _filterPill(t('crypto'), 2, currentFilter),
               ],
             ),
           ),
@@ -763,7 +848,7 @@ class _PricesTabState extends State<PricesTab> {
               backgroundColor: C.surface,
               onRefresh: appState.refresh,
               child: list.isEmpty
-                  ? Center(child: Text(appState.loading ? t('loading') : t('noFavs'), style: const TextStyle(color: C.textSecondary)))
+                  ? Center(child: Text(appState.loading ? t('loading') : t('noResults'), style: const TextStyle(color: C.textSecondary)))
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                       children: list.map((a) {
@@ -812,10 +897,10 @@ class _PricesTabState extends State<PricesTab> {
     );
   }
 
-  Widget _filterPill(String label, int idx) {
-    final sel = _filter == idx;
+  Widget _filterPill(String label, int idx, int current) {
+    final sel = current == idx;
     return GestureDetector(
-      onTap: () => setState(() => _filter = idx),
+      onTap: () => pricesFilter.value = idx,
       child: Container(
         margin: const EdgeInsets.only(left: 10),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -892,7 +977,7 @@ class FavoritesTab extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 GestureDetector(
                                   onTap: () => appState.toggleFav(a.code),
-                                  child: const Icon(Icons.more_vert_rounded, color: C.textTertiary),
+                                  child: const Icon(Icons.delete_outline_rounded, color: C.red),
                                 ),
                               ],
                             ),
@@ -930,33 +1015,70 @@ class SettingsTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 30),
-          _settingItem(Icons.wb_sunny_rounded, t('darkMode'), trailing: const Icon(Icons.dark_mode_rounded, color: C.primaryPurple)),
-          GestureDetector(
-            onTap: () => appState.setLang(appState.lang == 'fa' ? 'en' : 'fa'),
-            child: _settingItem(Icons.language_rounded, t('language'), trailing: Text(appState.lang == 'fa' ? 'فارسی' : 'English', style: const TextStyle(color: C.textSecondary))),
+          _settingItem(
+            Icons.wb_sunny_rounded, t('darkMode'), 
+            trailing: const Icon(Icons.dark_mode_rounded, color: C.primaryPurple),
+            onTap: () {},
           ),
-          _settingItem(Icons.notifications_none_rounded, t('notifications')),
-          _settingItem(Icons.headset_mic_rounded, t('support')),
-          _settingItem(Icons.shield_outlined, t('privacy')),
-          _settingItem(Icons.info_outline_rounded, t('about')),
+          _settingItem(
+            Icons.language_rounded, t('language'), 
+            trailing: Text(appState.lang == 'fa' ? 'فارسی' : 'English', style: const TextStyle(color: C.textSecondary)),
+            onTap: () => appState.setLang(appState.lang == 'fa' ? 'en' : 'fa'),
+          ),
+          _settingItem(
+            Icons.notifications_none_rounded, t('notifications'),
+            onTap: () => _showMsg(context, t('notifications'), 'اعلان جدیدی وجود ندارد.'),
+          ),
+          _settingItem(
+            Icons.headset_mic_rounded, t('support'),
+            onTap: () => _showMsg(context, t('support'), t('supportText')),
+          ),
+          _settingItem(
+            Icons.shield_outlined, t('privacy'),
+            onTap: () => _showMsg(context, t('privacy'), t('privacyText')),
+          ),
+          _settingItem(
+            Icons.info_outline_rounded, t('about'),
+            onTap: () => _showMsg(context, t('about'), t('aboutText')),
+          ),
         ],
       ),
     );
   }
 
-  Widget _settingItem(IconData icon, String title, {Widget? trailing}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            Icon(icon, color: C.textSecondary),
-            const SizedBox(width: 16),
-            Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-            if (trailing != null) trailing,
-            if (trailing == null) const Icon(Icons.chevron_left_rounded, color: C.textTertiary),
-          ],
+  void _showMsg(BuildContext context, String title, String text) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.surfaceLight,
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text(text, style: const TextStyle(color: C.textSecondary, height: 1.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('باشه', style: TextStyle(color: C.primaryPurple, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingItem(IconData icon, String title, {Widget? trailing, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, color: C.textSecondary),
+              const SizedBox(width: 16),
+              Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+              if (trailing != null) trailing,
+              if (trailing == null) const Icon(Icons.chevron_left_rounded, color: C.textTertiary),
+            ],
+          ),
         ),
       ),
     );
@@ -964,7 +1086,7 @@ class SettingsTab extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  DETAIL SCREEN (Restored & Styled)
+//  DETAIL SCREEN
 // ═══════════════════════════════════════════════════════
 class DetailScreen extends StatefulWidget {
   final MarketAsset asset;
