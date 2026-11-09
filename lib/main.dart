@@ -32,6 +32,10 @@ ThemeData get darkTheme => ThemeData(
   scaffoldBackgroundColor: const Color(0xFF05050A),
   colorScheme: ColorScheme.fromSeed(seedColor: C.primaryPurple, brightness: Brightness.dark),
   appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
+  pageTransitionsTheme: const PageTransitionsTheme(builders: {
+    TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+  }),
 );
 
 ThemeData get lightTheme => ThemeData(
@@ -40,6 +44,10 @@ ThemeData get lightTheme => ThemeData(
   scaffoldBackgroundColor: const Color(0xFFF4F6FA),
   colorScheme: ColorScheme.fromSeed(seedColor: C.primaryPurple, brightness: Brightness.light),
   appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
+  pageTransitionsTheme: const PageTransitionsTheme(builders: {
+    TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+  }),
 );
 
 // ═══════════════════════════════════════════════════════
@@ -52,8 +60,6 @@ class S {
     'favs': ['علاقه‌مندی‌ها', 'Favorites'],
     'settings': ['تنظیمات', 'Settings'],
     'searchHint': ['جستجوی قیمت‌ها...', 'Search prices...'],
-    'trendUp': ['بازار جهانی در اوج رشد', 'Global market at its peak'],
-    'upTo': ['تا ۸.۸۷٪ افزایش', 'Up to 8.87% increase'],
     'all': ['همه', 'All'],
     'currency': ['ارزها', 'Currencies'],
     'crypto': ['کریپتو', 'Crypto'],
@@ -76,11 +82,12 @@ class S {
     'noResults': ['موردی یافت نشد', 'No results found'],
     'loading': ['در حال دریافت اطلاعات...', 'Loading data...'],
     'retry': ['تلاش دوباره', 'Retry'],
-    'connError': ['اتصال به اینترنت برقرار نشد. لطفاً اتصال خود را بررسی کنید.', 'Connection failed. Please check your internet.'],
-    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای ارزها، طلا و ارزهای دیجیتال است.\n\nنسخه ۱.۰.۰', 'Ping Market is a platform to view live prices of currencies, gold, and crypto.\n\nVersion 1.0.0'],
-    'supportText': ['برای ارتباط با پشتیبانی به وب‌سایت ما مراجعه کنید:\n\nmrpingshop.ir', 'Contact support via our website:\n\nmrpingshop.ir'],
-    'privacyText': ['اطلاعات شما در این اپلیکیشن کاملاً محرمانه باقی می‌ماند و هیچ داده‌ای بدون اجازه شما ارسال نمی‌شود.', 'Your data is completely private. No data is sent without your permission.'],
+    'connError': ['اتصال به اینترنت برقرار نشد.', 'Connection failed.'],
+    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای است.\n\nنسخه ۱.۰.۰', 'Ping Market is a platform for live prices.\n\nVersion 1.0.0'],
+    'supportText': ['mrpingshop.ir', 'mrpingshop.ir'],
+    'privacyText': ['اطلاعات شما کاملاً محرمانه است.', 'Your data is private.'],
     'noNotif': ['اعلان جدیدی وجود ندارد.', 'No new notifications.'],
+    'selectFeatured': ['انتخاب ارز برای نمایش در صفحه اصلی', 'Select asset for home banner'],
   };
 
   static String get(String key, String lang) {
@@ -184,9 +191,18 @@ class AppState extends ChangeNotifier {
 
   int selectedTab = 0;
   int pricesFilter = 0;
+  String featuredCode = 'USD_RLS';
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
+  
+  MarketAsset? get featuredAsset {
+    try {
+      return all.firstWhere((a) => a.code == featuredCode);
+    } catch (_) {
+      return all.isNotEmpty ? all.first : null;
+    }
+  }
 
   void setTab(int index) {
     selectedTab = index;
@@ -203,6 +219,7 @@ class AppState extends ChangeNotifier {
     favorites = (p.getStringList('favs') ?? []).toSet();
     lang = p.getString('lang') ?? 'fa';
     isDarkMode = p.getBool('dark') ?? true;
+    featuredCode = p.getString('featured') ?? 'USD_RLS';
     notifyListeners();
     await refresh();
   }
@@ -234,9 +251,7 @@ class AppState extends ChangeNotifier {
           iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
         }
       }
-    } catch (e) {
-      // Handled by parent
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadCrypto() async {
@@ -260,6 +275,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     final p = await SharedPreferences.getInstance();
     await p.setStringList('favs', favorites.toList());
+  }
+
+  Future<void> setFeatured(String code) async {
+    featuredCode = code;
+    notifyListeners();
+    final p = await SharedPreferences.getInstance();
+    await p.setString('featured', code);
   }
 
   Future<void> toggleLang() async {
@@ -375,9 +397,8 @@ class _FloatingNav extends StatelessWidget {
               final sel = index == i;
               final (icon, active, label) = items[i];
               return Expanded(
-                child: GestureDetector(
+                child: TapScale(
                   onTap: () => onChanged(i),
-                  behavior: HitTestBehavior.opaque,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -403,6 +424,118 @@ class _FloatingNav extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ANIMATION WIDGETS
+// ═══════════════════════════════════════════════════════
+class TapScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  const TapScale({super.key, required this.child, required this.onTap});
+
+  @override
+  State<TapScale> createState() => _TapScaleState();
+}
+
+class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scale = Tween(begin: 1.0, end: 0.92).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scale,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class StaggeredListItem extends StatelessWidget {
+  final int index;
+  final Widget child;
+  const StaggeredListItem({super.key, required this.index, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 30 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class ShimmerSkeleton extends StatefulWidget {
+  final double height;
+  const ShimmerSkeleton({super.key, required this.height});
+
+  @override
+  State<ShimmerSkeleton> createState() => _ShimmerSkeletonState();
+}
+
+class _ShimmerSkeletonState extends State<ShimmerSkeleton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          height: widget.height,
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Color.lerp(const Color(0xFF1C1C2A), const Color(0xFF2C2C3A), _controller.value),
+            borderRadius: BorderRadius.circular(20),
+          ),
+        );
+      },
     );
   }
 }
@@ -454,7 +587,6 @@ class _SparkPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (data.length < 2) return;
-    // Fixed num to double issue
     final minV = data.reduce(min).toDouble();
     final maxV = data.reduce(max).toDouble();
     final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
@@ -511,11 +643,14 @@ class AssetIcon extends StatelessWidget {
       bgColor = Colors.transparent;
     }
 
-    return Container(
-      width: size, height: size,
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(14)),
-      alignment: Alignment.center,
-      child: iconWidget,
+    return Hero(
+      tag: 'icon_${asset.code}',
+      child: Container(
+        width: size, height: size,
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(14)),
+        alignment: Alignment.center,
+        child: iconWidget,
+      ),
     );
   }
 }
@@ -545,27 +680,8 @@ class HomeTab extends StatelessWidget {
             // Top Bar
             Row(
               children: [
-                GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: isDark ? const Color(0xFF11111A) : Colors.white,
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                      builder: (_) => Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.notifications_none_rounded, color: C.primaryPurple, size: 40),
-                            const SizedBox(height: 16),
-                            Text(t('notifications'), style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            Text(t('noNotif'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                TapScale(
+                  onTap: () => _showNotif(context, state),
                   child: GlassCard(
                     padding: const EdgeInsets.all(10),
                     child: Icon(Icons.notifications_none_rounded, color: textColor),
@@ -586,7 +702,7 @@ class HomeTab extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                GestureDetector(
+                TapScale(
                   onTap: state.toggleLang,
                   child: GlassCard(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -597,55 +713,21 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Banner
-            Container(
-              height: 140,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  colors: [C.primaryPurple.withOpacity(isDark ? 0.6 : 0.8), isDark ? const Color(0xFF05050A) : Colors.white],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
-                border: Border.all(color: C.primaryPurple.withOpacity(0.3)),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    right: -20, bottom: 0, top: 20, width: 200,
-                    child: Opacity(
-                      opacity: 0.5,
-                      child: CustomPaint(painter: _BannerChartPainter()),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.trending_up_rounded, color: C.primaryCyan),
-                            const SizedBox(width: 8),
-                            Text(t('trendUp'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.arrow_drop_up_rounded, color: C.green),
-                            Text(t('upTo'), style: const TextStyle(color: C.green, fontSize: 12)),
-                          ],
-                        )
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
+            // Dynamic Featured Card (Selectable)
+            if (!state.loading && state.featuredAsset != null)
+              TapScale(
+                onTap: () => _showFeaturedSelector(context, state),
+                child: _buildFeaturedCard(state, state.featuredAsset!),
+              )
+            else if (state.loading)
+              const ShimmerSkeleton(height: 160)
+            else
+              _buildErrorCard(context, state),
+            
             const SizedBox(height: 20),
 
             // Search
-            GestureDetector(
+            TapScale(
               onTap: () => state.setTab(1),
               child: GlassCard(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -675,19 +757,11 @@ class HomeTab extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Data Loading Area
-            if (state.loading)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    children: [
-                      const CircularProgressIndicator(color: C.primaryPurple),
-                      const SizedBox(height: 16),
-                      Text(t('loading'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)),
-                    ],
-                  ),
-                ),
-              )
+            if (state.loading) ...[
+              const ShimmerSkeleton(height: 80),
+              const ShimmerSkeleton(height: 80),
+              const ShimmerSkeleton(height: 80),
+            ]
             else if (state.error != null && state.all.isEmpty)
               Center(
                 child: Padding(
@@ -708,15 +782,113 @@ class HomeTab extends StatelessWidget {
                 ),
               )
             else if (state.all.isNotEmpty)
-              ...state.all.take(4).map((a) => _homePriceRow(context, state, a)),
+              ...state.all.take(4).toList().asMap().entries.map((entry) {
+                return StaggeredListItem(
+                  index: entry.key,
+                  child: _homePriceRow(context, state, entry.value),
+                );
+              }),
           ],
         ),
       ),
     );
   }
-  
+
+  Widget _buildFeaturedCard(AppState state, MarketAsset asset) {
+    final isUp = asset.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
+    
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A148C), Color(0xFF1A237E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: C.primaryPurple.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -20, bottom: -20,
+            child: Icon(Icons.show_chart_rounded, size: 120, color: Colors.white.withOpacity(0.05)),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  AssetIcon(asset: asset, size: 40),
+                  const SizedBox(width: 12),
+                  Text(asset.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  const Icon(Icons.touch_app_rounded, color: Colors.white54, size: 20),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(asset.displayPrice, style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(isUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: changeColor, size: 16),
+                  const SizedBox(width: 4),
+                  Text(asset.changeText, style: TextStyle(color: changeColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeaturedSelector(BuildContext context, AppState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: state.isDarkMode ? const Color(0xFF11111A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  state.t('selectFeatured'),
+                  style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: state.all.length,
+                  itemBuilder: (_, i) {
+                    final a = state.all[i];
+                    return ListTile(
+                      leading: AssetIcon(asset: a, size: 40),
+                      title: Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black)),
+                      onTap: () {
+                        state.setFeatured(a.code);
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _quickAction(BuildContext context, AppState state, IconData icon, String label, Color color, int filter) {
-    return GestureDetector(
+    return TapScale(
       onTap: () {
         state.setPricesFilter(filter);
         state.setTab(1);
@@ -736,7 +908,7 @@ class HomeTab extends StatelessWidget {
 
   Widget _homePriceRow(BuildContext context, AppState state, MarketAsset a) {
     final isUp = a.change >= 0;
-    return GestureDetector(
+    return TapScale(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -772,20 +944,48 @@ class HomeTab extends StatelessWidget {
       ),
     );
   }
-}
 
-class _BannerChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = C.primaryCyan.withOpacity(0.8);
-    final w = size.width / 8;
-    for (int i = 0; i < 8; i++) {
-      final h = (i * 10.0) + 20;
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(i * w, size.height - h, w * 0.6, h), const Radius.circular(4)), p);
-    }
+  Widget _buildErrorCard(BuildContext context, AppState state) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            const Icon(Icons.wifi_off_rounded, color: C.red, size: 48),
+            const SizedBox(height: 16),
+            Text(state.error ?? 'Error', style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54), textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: state.refresh,
+              style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple),
+              child: Text(state.t('retry')),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+
+  void _showNotif(BuildContext context, AppState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: state.isDarkMode ? const Color(0xFF11111A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.notifications_none_rounded, color: C.primaryPurple, size: 40),
+            const SizedBox(height: 16),
+            Text(state.t('notifications'), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(state.t('noNotif'), style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54)),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -874,44 +1074,55 @@ class _PricesTabState extends State<PricesTab> {
               backgroundColor: isDark ? const Color(0xFF11111A) : Colors.white,
               onRefresh: state.refresh,
               child: state.loading 
-                  ? const Center(child: CircularProgressIndicator(color: C.primaryPurple))
+                  ? ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: const [
+                        ShimmerSkeleton(height: 80),
+                        ShimmerSkeleton(height: 80),
+                        ShimmerSkeleton(height: 80),
+                      ],
+                    )
                   : list.isEmpty
                       ? Center(child: Text(t('noResults'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)))
                       : ListView(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                          children: list.map((a) {
+                          children: list.asMap().entries.map((entry) {
+                            final a = entry.value;
                             final isUp = a.change >= 0;
-                            return GestureDetector(
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: GlassCard(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Row(
-                                    children: [
-                                      AssetIcon(asset: a, size: 46),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                            return StaggeredListItem(
+                              index: entry.key > 10 ? 10 : entry.key, // Cap the delay
+                              child: TapScale(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: GlassCard(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        AssetIcon(asset: a, size: 46),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(a.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                              const SizedBox(height: 4),
+                                              Text(a.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                                            ],
+                                          ),
+                                        ),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
-                                            Text(a.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                            Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
                                             const SizedBox(height: 4),
-                                            Text(a.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                                            Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
                                           ],
                                         ),
-                                      ),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
-                                          const SizedBox(height: 4),
-                                          Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(Icons.chevron_right_rounded, color: isDark ? const Color(0xFF606070) : Colors.black38),
-                                    ],
+                                        const SizedBox(width: 8),
+                                        Icon(Icons.chevron_right_rounded, color: isDark ? const Color(0xFF606070) : Colors.black38),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -927,7 +1138,7 @@ class _PricesTabState extends State<PricesTab> {
 
   Widget _filterPill(AppState state, String label, int idx) {
     final sel = state.pricesFilter == idx;
-    return GestureDetector(
+    return TapScale(
       onTap: () => state.setPricesFilter(idx),
       child: Container(
         margin: const EdgeInsets.only(left: 10),
@@ -977,42 +1188,49 @@ class FavoritesTab extends StatelessWidget {
                 ? Center(child: Text(t('noFavs'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)))
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
-                    children: state.favList.map((a) {
+                    children: state.favList.asMap().entries.map((entry) {
+                      final a = entry.value;
                       final isUp = a.change >= 0;
-                      return GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: GlassCard(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                AssetIcon(asset: a, size: 46),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                      return StaggeredListItem(
+                        index: entry.key,
+                        child: TapScale(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: GlassCard(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  AssetIcon(asset: a, size: 46),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(a.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 4),
+                                        Text(a.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text(a.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                      Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 4),
-                                      Text(a.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                                      Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
                                     ],
                                   ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 4),
-                                    Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
-                                  ],
-                                ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => state.toggleFav(a.code),
-                                  child: const Icon(Icons.delete_outline_rounded, color: C.red),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  TapScale(
+                                    onTap: () => state.toggleFav(a.code),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4.0),
+                                      child: Icon(Icons.delete_outline_rounded, color: C.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1108,7 +1326,7 @@ class SettingsTab extends StatelessWidget {
 
   Widget _settingItem(BuildContext context, AppState state, IconData icon, String title, {Widget? trailing, required VoidCallback onTap}) {
     final isDark = state.isDarkMode;
-    return GestureDetector(
+    return TapScale(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -1170,15 +1388,18 @@ class _DetailScreenState extends State<DetailScreen> {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF05050A) : const Color(0xFFF4F6FA),
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: textColor),
-          onPressed: () => Navigator.pop(context),
+        leading: TapScale(
+          onTap: () => Navigator.pop(context),
+          child: Icon(Icons.arrow_back_rounded, color: textColor),
         ),
         title: Text(a.displayLabelFor(state.lang), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
         actions: [
-          IconButton(
-            onPressed: () => state.toggleFav(a.code),
-            icon: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: C.gold),
+          TapScale(
+            onTap: () => state.toggleFav(a.code),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: C.gold),
+            ),
           ),
         ],
       ),
@@ -1229,7 +1450,7 @@ class _DetailScreenState extends State<DetailScreen> {
               children: List.generate(_ranges.length, (i) {
                 final sel = _rangeIdx == i;
                 return Expanded(
-                  child: GestureDetector(
+                  child: TapScale(
                     onTap: () => setState(() => _rangeIdx = i),
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -1287,7 +1508,7 @@ class _DetailScreenState extends State<DetailScreen> {
             const SizedBox(height: 30),
 
             // Watchlist Button
-            GestureDetector(
+            TapScale(
               onTap: () => state.toggleFav(a.code),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1336,7 +1557,6 @@ class _ChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (data.length < 2) return;
     
-    // Fixed num to double issue
     final minV = data.reduce(min).toDouble();
     final maxV = data.reduce(max).toDouble();
     final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
