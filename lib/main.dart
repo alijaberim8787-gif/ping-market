@@ -7,11 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ═══════════════════════════════════════════════════════
-//  CONFIG
+//  CONFIG (آدرس‌ها اصلاح شدند)
 // ═══════════════════════════════════════════════════════
 const String kBackend = 'https://mrpingshop.ir';
-const String kAssetsUrl = '$kBackend/api/api/assets';
-const String kCryptoUrl = '$kBackend/api/api/crypto/list';
+const String kAssetsUrl = '$kBackend/api/assets';
+const String kCryptoUrl = '$kBackend/api/crypto/list';
 
 // ═══════════════════════════════════════════════════════
 //  COLORS - Deep navy blue theme
@@ -212,7 +212,6 @@ class MarketAsset {
     return parts.length > 1 ? '$intPart.${parts[1]}' : intPart;
   }
 
-  // Flag image URL (for currency codes)
   String? get flagUrl {
     switch (code) {
       case 'USD_RLS': return 'https://flagcdn.com/w160/us.png';
@@ -1043,7 +1042,7 @@ class PriceTile extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  HOME TAB - fully redesigned
+//  HOME TAB
 // ═══════════════════════════════════════════════════════
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
