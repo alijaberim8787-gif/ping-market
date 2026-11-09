@@ -42,7 +42,6 @@ class S {
     'prices': ['قیمت‌ها', 'Prices'],
     'favs': ['علاقه‌مندی‌ها', 'Favorites'],
     'settings': ['تنظیمات', 'Settings'],
-    'hello': ['سلام', 'Hello'],
     'searchHint': ['جستجوی قیمت‌ها...', 'Search prices...'],
     'trendUp': ['بازار جهانی در اوج رشد', 'Global market at its peak'],
     'upTo': ['تا ۸.۸۷٪ افزایش', 'Up to 8.87% increase'],
@@ -53,7 +52,6 @@ class S {
     'dollar': ['دلار', 'Dollar'],
     'bitcoin': ['بیت‌کوین', 'Bitcoin'],
     'allMarkets': ['همه بازارها', 'All markets'],
-    'iranRial': ['ریال ایران', 'Iranian Rial'],
     'toman': ['تومان', 'Toman'],
     'darkMode': ['حالت نمایش', 'Display mode'],
     'language': ['زبان برنامه', 'App language'],
@@ -61,7 +59,11 @@ class S {
     'support': ['پشتیبانی', 'Support'],
     'privacy': ['حریم خصوصی و امنیت', 'Privacy & Security'],
     'about': ['درباره ما', 'About'],
-    'loading': ['در حال بارگذاری...', 'Loading...'],
+    'currentPrice': ['قیمت فعلی', 'Current Price'],
+    'dailyChange': ['تغییرات روزانه', 'Daily Change'],
+    'addToWatch': ['افزودن به علاقه‌مندی‌ها', 'Add to Favorites'],
+    'removeFromWatch': ['حذف از علاقه‌مندی‌ها', 'Remove from Favorites'],
+    'noFavs': ['هنوز چیزی اضافه نکردی', 'Nothing added yet'],
   };
 
   static String get(String key, String lang) {
@@ -72,7 +74,7 @@ class S {
 }
 
 // ═══════════════════════════════════════════════════════
-//  MODELS & STATE (Same as before)
+//  MODELS & STATE
 // ═══════════════════════════════════════════════════════
 class MarketAsset {
   final String code;
@@ -97,6 +99,7 @@ class MarketAsset {
     final code = j['code']?.toString() ?? '';
     final isCrypto = code.startsWith('CG_');
     final symbol = j['symbol']?.toString() ?? (isCrypto ? code.substring(3) : code.replaceAll('_RLS', ''));
+    
     final changeRaw = j['change24h'];
     final double change = changeRaw is num ? changeRaw.toDouble() : ((code.hashCode.abs() % 500) - 200) / 100.0;
 
@@ -156,6 +159,7 @@ class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [];
   List<MarketAsset> crypto = [];
   bool loading = true;
+  String? error;
   Set<String> favorites = {};
   String lang = 'fa';
 
@@ -177,6 +181,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> refresh() async {
     loading = iran.isEmpty && crypto.isEmpty;
+    error = null;
     notifyListeners();
     await Future.wait([_loadAssets(), _loadCrypto()]);
     loading = false;
@@ -187,25 +192,46 @@ class AppState extends ChangeNotifier {
     try {
       final r = await http.get(Uri.parse(kAssetsUrl)).timeout(const Duration(seconds: 15));
       if (r.statusCode == 200) {
-        iran = (jsonDecode(r.body)['assets'] as List).map((e) => MarketAsset.fromJson(e)).toList();
+        final data = jsonDecode(r.body);
+        if (data['assets'] != null) {
+          iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
+        }
+      } else {
+        error = 'Server error: ${r.statusCode}';
       }
-    } catch (_) {}
+    } catch (e) {
+      error = 'Connection failed';
+    }
   }
 
   Future<void> _loadCrypto() async {
     try {
       final r = await http.get(Uri.parse(kCryptoUrl)).timeout(const Duration(seconds: 20));
       if (r.statusCode == 200) {
-        crypto = (jsonDecode(r.body)['assets'] as List).map((e) => MarketAsset.fromJson(e)).toList();
+        final data = jsonDecode(r.body);
+        if (data['assets'] != null) {
+          crypto = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
+        }
       }
     } catch (_) {}
   }
 
   Future<void> toggleFav(String code) async {
-    if (favorites.contains(code)) favorites.remove(code); else favorites.add(code);
+    if (favorites.contains(code)) {
+      favorites.remove(code);
+    } else {
+      favorites.add(code);
+    }
     notifyListeners();
     final p = await SharedPreferences.getInstance();
     await p.setStringList('favs', favorites.toList());
+  }
+
+  Future<void> setLang(String v) async {
+    lang = v;
+    notifyListeners();
+    final p = await SharedPreferences.getInstance();
+    await p.setString('lang', v);
   }
 
   String t(String key) => S.get(key, lang);
@@ -306,7 +332,7 @@ class _FloatingNav extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      height: 70,
+      height: 72,
       decoration: BoxDecoration(
         color: C.surface.withOpacity(0.85),
         borderRadius: BorderRadius.circular(25),
@@ -434,7 +460,6 @@ class AssetIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fallback colors for known assets
     Color bgColor = C.surfaceLight;
     Widget iconWidget = Text(asset.icon, style: TextStyle(fontSize: size * 0.5));
 
@@ -478,126 +503,182 @@ class HomeTab extends StatelessWidget {
     final t = appState.t;
     return SafeArea(
       bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
-        children: [
-          // Top Bar
-          Row(
-            children: [
-              Stack(
-                children: [
-                  GlassCard(
-                    padding: const EdgeInsets.all(10),
-                    child: const Icon(Icons.notifications_none_rounded, color: Colors.white),
-                  ),
-                  Positioned(right: 10, top: 10, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.red, shape: BoxShape.circle))),
-                ],
-              ),
-              const Spacer(),
-              Column(
-                children: [
-                  RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(text: 'Ping ', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                        TextSpan(text: 'Market', style: TextStyle(color: C.primaryPurple, fontSize: 20, fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-                  ),
-                  const Text('Real-time Prices · Global Markets', style: TextStyle(color: C.textSecondary, fontSize: 10)),
-                ],
-              ),
-              const Spacer(),
-              GlassCard(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Text(appState.lang == 'fa' ? 'فا' : 'EN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Banner
-          Container(
-            height: 140,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                colors: [C.primaryPurple.withOpacity(0.6), C.bg],
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: C.primaryPurple.withOpacity(0.3)),
-            ),
-            child: Stack(
+      child: RefreshIndicator(
+        color: C.primaryPurple,
+        backgroundColor: C.surface,
+        onRefresh: appState.refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+          children: [
+            // Top Bar
+            Row(
               children: [
-                // Decorative chart
-                Positioned(
-                  right: -20, bottom: 0, top: 20, width: 200,
-                  child: Opacity(
-                    opacity: 0.5,
-                    child: CustomPaint(painter: _BannerChartPainter()),
-                  ),
+                Stack(
+                  children: [
+                    GlassCard(
+                      padding: const EdgeInsets.all(10),
+                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+                    ),
+                    Positioned(right: 10, top: 10, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.red, shape: BoxShape.circle))),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                const Spacer(),
+                Column(
+                  children: [
+                    RichText(
+                      text: const TextSpan(
                         children: [
-                          const Icon(Icons.trending_up_rounded, color: C.primaryCyan),
-                          const SizedBox(width: 8),
-                          Text(t('trendUp'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          TextSpan(text: 'Ping ', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                          TextSpan(text: 'Market', style: TextStyle(color: C.primaryPurple, fontSize: 20, fontWeight: FontWeight.w800)),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.arrow_drop_up_rounded, color: C.green),
-                          Text(t('upTo'), style: const TextStyle(color: C.green, fontSize: 12)),
-                        ],
-                      )
-                    ],
-                  ),
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Search
-          GlassCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                const Icon(Icons.search_rounded, color: C.textSecondary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: t('searchHint'),
-                      hintStyle: const TextStyle(color: C.textTertiary),
-                      border: InputBorder.none,
                     ),
+                    const Text('Real-time Prices · Global Markets', style: TextStyle(color: C.textSecondary, fontSize: 10)),
+                  ],
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    appState.setLang(appState.lang == 'fa' ? 'en' : 'fa');
+                  },
+                  child: GlassCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Text(appState.lang == 'fa' ? 'فا' : 'EN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                const Icon(Icons.tune_rounded, color: C.textSecondary),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Quick Actions
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Banner
+            Container(
+              height: 140,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  colors: [C.primaryPurple.withOpacity(0.6), C.bg],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: C.primaryPurple.withOpacity(0.3)),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: -20, bottom: 0, top: 20, width: 200,
+                    child: Opacity(
+                      opacity: 0.5,
+                      child: CustomPaint(painter: _BannerChartPainter()),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.trending_up_rounded, color: C.primaryCyan),
+                            const SizedBox(width: 8),
+                            Text(t('trendUp'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.arrow_drop_up_rounded, color: C.green),
+                            Text(t('upTo'), style: const TextStyle(color: C.green, fontSize: 12)),
+                          ],
+                        )
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Search
+            GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.search_rounded, color: C.textSecondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: t('searchHint'),
+                        hintStyle: const TextStyle(color: C.textTertiary),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.tune_rounded, color: C.textSecondary),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Quick Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _quickAction(Icons.diamond_rounded, t('gold'), C.gold),
+                _quickAction(Icons.attach_money_rounded, t('dollar'), C.green),
+                _quickAction(Icons.currency_bitcoin_rounded, t('bitcoin'), Colors.orange),
+                _quickAction(Icons.grid_view_rounded, t('allMarkets'), Colors.blueAccent),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Quick list preview
+            if (appState.loading)
+              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: C.primaryPurple)))
+            else
+              ...appState.all.take(4).map((a) => _homePriceRow(context, a)),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _homePriceRow(BuildContext context, MarketAsset a) {
+    final isUp = a.change >= 0;
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GlassCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(
             children: [
-              _quickAction(Icons.diamond_rounded, t('gold'), C.gold),
-              _quickAction(Icons.attach_money_rounded, t('dollar'), C.green),
-              _quickAction(Icons.currency_bitcoin_rounded, t('bitcoin'), Colors.orange),
-              _quickAction(Icons.grid_view_rounded, t('allMarkets'), Colors.blueAccent),
+              AssetIcon(asset: a, size: 46),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                ],
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: C.textTertiary),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -645,6 +726,10 @@ class _PricesTabState extends State<PricesTab> {
   @override
   Widget build(BuildContext context) {
     final t = appState.t;
+    List<MarketAsset> list = appState.all;
+    if (_filter == 1) list = appState.iran;
+    if (_filter == 2) list = appState.crypto;
+
     return SafeArea(
       bottom: false,
       child: Column(
@@ -673,9 +758,53 @@ class _PricesTabState extends State<PricesTab> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-              children: appState.all.map((a) => _priceRow(a)).toList(),
+            child: RefreshIndicator(
+              color: C.primaryPurple,
+              backgroundColor: C.surface,
+              onRefresh: appState.refresh,
+              child: list.isEmpty
+                  ? Center(child: Text(appState.loading ? t('loading') : t('noFavs'), style: const TextStyle(color: C.textSecondary)))
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      children: list.map((a) {
+                        final isUp = a.change >= 0;
+                        return GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: GlassCard(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  AssetIcon(asset: a, size: 46),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 4),
+                                        Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 4),
+                                      Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.chevron_right_rounded, color: C.textTertiary),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
             ),
           ),
         ],
@@ -696,42 +825,6 @@ class _PricesTabState extends State<PricesTab> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(label, style: TextStyle(color: sel ? Colors.white : C.textSecondary, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _priceRow(MarketAsset a) {
-    final isUp = a.change >= 0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            AssetIcon(asset: a, size: 46),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
-              ],
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: C.textTertiary),
-          ],
-        ),
       ),
     );
   }
@@ -758,47 +851,51 @@ class FavoritesTab extends StatelessWidget {
                 const Icon(Icons.star_rounded, color: C.primaryCyan, size: 28),
                 const SizedBox(width: 10),
                 Text(t('favs'), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                GlassCard(padding: const EdgeInsets.all(8), child: const Icon(Icons.add_rounded, color: Colors.white)),
               ],
             ),
           ),
           Expanded(
             child: appState.favList.isEmpty
-                ? Center(child: Text(t('noResults'), style: const TextStyle(color: C.textSecondary)))
+                ? Center(child: Text(t('noFavs'), style: const TextStyle(color: C.textSecondary)))
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
                     children: appState.favList.map((a) {
                       final isUp = a.change >= 0;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: GlassCard(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              AssetIcon(asset: a, size: 46),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                      return GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GlassCard(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              children: [
+                                AssetIcon(asset: a, size: 46),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 4),
+                                      Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                    Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 4),
-                                    Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
+                                    Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
                                   ],
                                 ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 4),
-                                  Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
-                                ],
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.more_vert_rounded, color: C.textTertiary),
-                            ],
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => appState.toggleFav(a.code),
+                                  child: const Icon(Icons.more_vert_rounded, color: C.textTertiary),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -833,8 +930,11 @@ class SettingsTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 30),
-          _settingItem(Icons.wb_sunny_rounded, t('darkMode'), trailing: Icon(Icons.dark_mode_rounded, color: C.primaryPurple)),
-          _settingItem(Icons.language_rounded, t('language'), trailing: Text(appState.lang == 'fa' ? 'فارسی' : 'English', style: const TextStyle(color: C.textSecondary))),
+          _settingItem(Icons.wb_sunny_rounded, t('darkMode'), trailing: const Icon(Icons.dark_mode_rounded, color: C.primaryPurple)),
+          GestureDetector(
+            onTap: () => appState.setLang(appState.lang == 'fa' ? 'en' : 'fa'),
+            child: _settingItem(Icons.language_rounded, t('language'), trailing: Text(appState.lang == 'fa' ? 'فارسی' : 'English', style: const TextStyle(color: C.textSecondary))),
+          ),
           _settingItem(Icons.notifications_none_rounded, t('notifications')),
           _settingItem(Icons.headset_mic_rounded, t('support')),
           _settingItem(Icons.shield_outlined, t('privacy')),
@@ -861,4 +961,234 @@ class SettingsTab extends StatelessWidget {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETAIL SCREEN (Restored & Styled)
+// ═══════════════════════════════════════════════════════
+class DetailScreen extends StatefulWidget {
+  final MarketAsset asset;
+  const DetailScreen({super.key, required this.asset});
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  int _rangeIdx = 0;
+  static const _ranges = ['1D', '1W', '1M', '3M', '1Y'];
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.asset;
+    final t = appState.t;
+    final isUp = a.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
+    final isFav = appState.favorites.contains(a.code);
+
+    final base = a.sparkline;
+    final mult = [1, 2, 4, 12, 30][_rangeIdx];
+    final ext = List<double>.from(base);
+    for (int k = 0; k < mult - 1; k++) {
+      final r = Random(a.code.hashCode + k);
+      for (int i = 0; i < base.length; i++) {
+        ext.add(ext.last + (r.nextDouble() - 0.48) * 3);
+      }
+    }
+    final high = ext.reduce(max);
+    final low = ext.reduce(min);
+
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(a.displayLabelFor(appState.lang), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        actions: [
+          IconButton(
+            onPressed: () => appState.toggleFav(a.code),
+            icon: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: C.gold),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+          children: [
+            GlassCard(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  AssetIcon(asset: a, size: 60),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(a.displayPrice, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                            const SizedBox(width: 6),
+                            Text(a.isCrypto ? 'USD' : t('toman'), style: const TextStyle(color: Colors.white54, fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            Row(
+              children: [
+                Icon(isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: changeColor, size: 20),
+                const SizedBox(width: 6),
+                Text(a.changeText, style: TextStyle(color: changeColor, fontSize: 16, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Range selector
+            Row(
+              children: List.generate(_ranges.length, (i) {
+                final sel = _rangeIdx == i;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _rangeIdx = i),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: sel ? C.primaryPurple : C.surfaceLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: sel ? C.primaryCyan : Colors.transparent),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _ranges[i],
+                        style: TextStyle(color: sel ? Colors.white : C.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 24),
+
+            // Chart
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 200,
+                    child: CustomPaint(painter: _ChartPainter(ext, changeColor), child: const SizedBox.expand()),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(low.toStringAsFixed(1), style: const TextStyle(color: C.textTertiary, fontSize: 11)),
+                      Text(high.toStringAsFixed(1), style: const TextStyle(color: C.textTertiary, fontSize: 11)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Stats
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _statRow(t('currentPrice'), a.displayPrice, Colors.white),
+                  Divider(height: 24, color: Colors.white.withOpacity(0.05)),
+                  _statRow(t('dailyChange'), a.changeText, changeColor),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // Watchlist Button
+            GestureDetector(
+              onTap: () => appState.toggleFav(a.code),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: isFav ? null : const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]),
+                  color: isFav ? C.surfaceLight : null,
+                  borderRadius: BorderRadius.circular(16),
+                  border: isFav ? Border.all(color: C.primaryPurple) : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: isFav ? C.primaryPurple : Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      isFav ? t('removeFromWatch') : t('addToWatch'),
+                      style: TextStyle(color: isFav ? C.primaryPurple : Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statRow(String label, String value, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: C.textSecondary, fontSize: 14)),
+        Text(value, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+class _ChartPainter extends CustomPainter {
+  final List<double> data;
+  final Color color;
+  _ChartPainter(this.data, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.length < 2) return;
+    final minV = data.reduce(min);
+    final maxV = data.reduce(max);
+    final range = (maxV - minV) == 0 ? 1 : (maxV - minV);
+
+    final linePath = Path();
+    final fillPath = Path()..moveTo(0, size.height);
+
+    for (int i = 0; i < data.length; i++) {
+      final x = (i / (data.length - 1)) * size.width;
+      final y = size.height - ((data[i] - minV) / range) * (size.height - 10) - 5;
+      if (i == 0) linePath.moveTo(x, y); else linePath.lineTo(x, y);
+      fillPath.lineTo(x, y);
+    }
+    fillPath..lineTo(size.width, size.height)..close();
+
+    canvas.drawPath(fillPath, Paint()..shader = LinearGradient(
+      colors: [color.withOpacity(0.3), color.withOpacity(0)],
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
+
+    canvas.drawPath(linePath, Paint()..color = color..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChartPainter old) => false;
 }
