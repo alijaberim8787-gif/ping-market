@@ -67,9 +67,11 @@ class S {
     'noResults': ['موردی یافت نشد', 'No results found'],
     'loading': ['در حال دریافت اطلاعات...', 'Loading data...'],
     'retry': ['تلاش دوباره', 'Retry'],
+    'connError': ['اتصال به اینترنت برقرار نشد. لطفاً اتصال خود را بررسی کنید.', 'Connection failed. Please check your internet.'],
     'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای ارزها، طلا و ارزهای دیجیتال است.\n\nنسخه ۱.۰.۰', 'Ping Market is a platform to view live prices of currencies, gold, and crypto.\n\nVersion 1.0.0'],
     'supportText': ['برای ارتباط با پشتیبانی به وب‌سایت ما مراجعه کنید:\n\nmrpingshop.ir', 'Contact support via our website:\n\nmrpingshop.ir'],
     'privacyText': ['اطلاعات شما در این اپلیکیشن کاملاً محرمانه باقی می‌ماند و هیچ داده‌ای بدون اجازه شما ارسال نمی‌شود.', 'Your data is completely private. No data is sent without your permission.'],
+    'noNotif': ['اعلان جدیدی وجود ندارد.', 'No new notifications.'],
   };
 
   static String get(String key, String lang) {
@@ -173,11 +175,6 @@ class AppState extends ChangeNotifier {
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
 
-  MarketAsset? byCode(String code) {
-    for (final a in all) { if (a.code == code) return a; }
-    return null;
-  }
-
   Future<void> init() async {
     final p = await SharedPreferences.getInstance();
     favorites = (p.getStringList('favs') ?? []).toSet();
@@ -192,9 +189,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.wait([_loadAssets(), _loadCrypto()]);
+      await Future.wait([
+        _loadAssets(),
+        _loadCrypto(),
+      ]).timeout(const Duration(seconds: 20)); // جلوگیری از چرخش بی‌نهایت
     } catch (e) {
-      error = 'Connection failed';
+      error = t('connError');
     } finally {
       loading = false;
       notifyListeners();
@@ -209,17 +209,15 @@ class AppState extends ChangeNotifier {
         if (data['assets'] != null) {
           iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
         }
-      } else {
-        error = 'Server error: ${r.statusCode}';
       }
     } catch (e) {
-      error = 'Failed to load Iran market data';
+      // خطا در تایم اوت هندل می‌شود
     }
   }
 
   Future<void> _loadCrypto() async {
     try {
-      final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 20));
+      final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 15));
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         if (data['assets'] != null) {
@@ -294,7 +292,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
             appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
           ),
           locale: Locale(appState.lang),
-          home: const AppShell(), // حذف const برای رفرش شدن
+          home: const AppShell(),
         );
       },
     );
@@ -316,12 +314,7 @@ class AppShell extends StatelessWidget {
           extendBody: true,
           body: IndexedStack(
             index: index,
-            children: [ // حذف const برای رفرش شدن دکمه‌ها
-              const HomeTab(),
-              const PricesTab(),
-              const FavoritesTab(),
-              const SettingsTab(),
-            ],
+            children: const [HomeTab(), PricesTab(), FavoritesTab(), SettingsTab()],
           ),
           bottomNavigationBar: _FloatingNav(
             index: index,
@@ -546,7 +539,7 @@ class HomeTab extends StatelessWidget {
                             const SizedBox(height: 16),
                             Text(t('notifications'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            const Text('اعلان جدیدی وجود ندارد.', style: TextStyle(color: C.textSecondary)),
+                            Text(t('noNotif'), style: const TextStyle(color: C.textSecondary)),
                           ],
                         ),
                       ),
@@ -637,10 +630,10 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Search (Navigates to Prices Tab)
+            // Search
             GestureDetector(
               onTap: () {
-                shellTab.value = 1; // Go to Prices
+                shellTab.value = 1;
               },
               child: GlassCard(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -669,11 +662,39 @@ class HomeTab extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Quick list preview
+            // Quick list preview with proper loading/error states
             if (appState.loading)
-              const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: C.primaryPurple)))
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      const CircularProgressIndicator(color: C.primaryPurple),
+                      const SizedBox(height: 16),
+                      Text(t('loading'), style: const TextStyle(color: C.textSecondary)),
+                    ],
+                  ),
+                ),
+              )
             else if (appState.error != null && appState.all.isEmpty)
-              Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(appState.error!, style: const TextStyle(color: C.red))))
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, color: C.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text(appState.error!, style: const TextStyle(color: C.textSecondary), textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => appState.refresh(),
+                        style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple),
+                        child: Text(t('retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             else
               ...appState.all.take(4).map((a) => _homePriceRow(context, a)),
           ],
@@ -847,49 +868,51 @@ class _PricesTabState extends State<PricesTab> {
               color: C.primaryPurple,
               backgroundColor: C.surface,
               onRefresh: appState.refresh,
-              child: list.isEmpty
-                  ? Center(child: Text(appState.loading ? t('loading') : t('noResults'), style: const TextStyle(color: C.textSecondary)))
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      children: list.map((a) {
-                        final isUp = a.change >= 0;
-                        return GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: GlassCard(
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  AssetIcon(asset: a, size: 46),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                                        const SizedBox(height: 4),
-                                        Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
-                                      ],
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+              child: appState.loading 
+                  ? const Center(child: CircularProgressIndicator(color: C.primaryPurple))
+                  : list.isEmpty
+                      ? Center(child: Text(t('noResults'), style: const TextStyle(color: C.textSecondary)))
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                          children: list.map((a) {
+                            final isUp = a.change >= 0;
+                            return GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: GlassCard(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Row(
                                     children: [
-                                      Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 4),
-                                      Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                                      AssetIcon(asset: a, size: 46),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(a.displayLabelFor(appState.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                            const SizedBox(height: 4),
+                                            Text(a.displayPrice, style: const TextStyle(color: C.textSecondary, fontSize: 13)),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 4),
+                                          Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.chevron_right_rounded, color: C.textTertiary),
                                     ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.chevron_right_rounded, color: C.textTertiary),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                            );
+                          }).toList(),
+                        ),
             ),
           ),
         ],
@@ -1027,7 +1050,7 @@ class SettingsTab extends StatelessWidget {
           ),
           _settingItem(
             Icons.notifications_none_rounded, t('notifications'),
-            onTap: () => _showMsg(context, t('notifications'), 'اعلان جدیدی وجود ندارد.'),
+            onTap: () => _showMsg(context, t('notifications'), t('noNotif')),
           ),
           _settingItem(
             Icons.headset_mic_rounded, t('support'),
