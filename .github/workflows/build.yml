@@ -33,7 +33,7 @@ jobs:
           sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
-
+          
       - name: Add INTERNET permission
         run: |
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
@@ -48,32 +48,13 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # ✅ بازنویسی کامل فایل build.gradle برای اعمال ۱۰۰٪ کلید انتشار
-      - name: Overwrite build.gradle for Release Signing
+      - name: Configure build.gradle for Release Signing
         run: |
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
               id "kotlin-android"
               id "dev.flutter.flutter-gradle-plugin"
-          }
-
-          def localProperties = new Properties()
-          def localPropertiesFile = rootProject.file('local.properties')
-          if (localPropertiesFile.exists()) {
-              localPropertiesFile.withReader('UTF-8') { reader ->
-                  localProperties.load(reader)
-              }
-          }
-
-          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-          if (flutterVersionCode == null) {
-              flutterVersionCode = '1'
-          }
-
-          def flutterVersionName = localProperties.getProperty('flutter.versionName')
-          if (flutterVersionName == null) {
-              flutterVersionName = '1.0'
           }
 
           def keystoreProperties = new Properties()
@@ -84,7 +65,7 @@ jobs:
 
           android {
               namespace "com.example.ping_market"
-              compileSdk flutter.compileSdkVersion
+              compileSdk 34
               ndkVersion "26.1.10909125"
 
               compileOptions {
@@ -96,16 +77,10 @@ jobs:
                   jvmTarget = '1.8'
               }
 
-              sourceSets {
-                  main.java.srcDirs += 'src/main/kotlin'
-              }
-
               defaultConfig {
                   applicationId "com.example.ping_market"
-                  minSdkVersion flutter.minSdkVersion
-                  targetSdkVersion flutter.targetSdkVersion
-                  versionCode flutterVersionCode.toInteger()
-                  versionName flutterVersionName
+                  minSdkVersion 21
+                  targetSdkVersion 34
               }
 
               signingConfigs {
@@ -136,7 +111,8 @@ jobs:
         run: dart run flutter_native_splash:create
 
       - name: Build APK
-        run: flutter build apk --release
+        # اینجا ما به زور نسخه (Version) را بالا می‌بریم تا مایکت و گوشی حتما آپدیت را قبول کنند
+        run: flutter build apk --release --build-name=2.1.4 --build-number=10
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
