@@ -66,7 +66,7 @@ class S {
     'noFavs': ['هنوز چیزی اضافه نکردی', 'Nothing added yet'], 'noResults': ['موردی یافت نشد', 'No results found'],
     'loading': ['در حال دریافت اطلاعات...', 'Loading data...'], 'retry': ['تلاش دوباره', 'Retry'],
     'connError': ['اتصال به اینترنت برقرار نشد.', 'Connection failed.'],
-    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای است.\n\nنسخه ۲.۱.۱', 'Ping Market is a platform for live prices.\n\nVersion 2.1.1'],
+    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای است.\n\nنسخه ۲.۱.۲', 'Ping Market is a platform for live prices.\n\nVersion 2.1.2'],
     'supportText': ['mrpingshop.ir', 'mrpingshop.ir'], 'privacyText': ['اطلاعات شما کاملاً محرمانه است.', 'Your data is private.'],
     'noNotif': ['اعلان جدیدی وجود ندارد.', 'No new notifications.'], 'selectFeatured': ['انتخاب ارز برای نمایش در صفحه اصلی', 'Select asset for home banner'],
   };
@@ -143,7 +143,7 @@ class AppState extends ChangeNotifier {
   int selectedTab = 0, pricesFilter = 0;
   String featuredCode = 'USD_RLS';
   
-  final FocusNode searchFocusNode = FocusNode(); // برای فوکوس روی سرچ
+  final FocusNode searchFocusNode = FocusNode();
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
@@ -620,7 +620,7 @@ class _SparkPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════
-//  ASSET ICON (با آیکون‌های باکیفیت و واقعی)
+//  ASSET ICON (کاملاً اصلاح شده - بدون پیک موتوری!)
 // ═══════════════════════════════════════════════════════
 class AssetIcon extends StatelessWidget {
   final MarketAsset asset;
@@ -629,34 +629,58 @@ class AssetIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // لینک عکس‌های باکیفیت برای دارایی‌های غیر کریپتو
-    String? url = asset.imageUrl;
-    if (url == null || url.isEmpty) {
-      if (asset.code == 'USD_RLS') {
-        url = 'https://cdn-icons-png.flaticon.com/512/1084/1084958.png'; // اسکناس دلار
-      } else if (asset.code == 'GOLD_18_RLS') {
-        url = 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png'; // شمش طلا
-      } else if (asset.code == 'COIN_EMAMI_RLS') {
-        url = 'https://cdn-icons-png.flaticon.com/512/1085/1085690.png'; // سکه
-      } else if (asset.code == 'EUR_RLS') {
-        url = 'https://cdn-icons-png.flaticon.com/512/1084/1084957.png'; // یورو
-      } else if (asset.code == 'BTC_RLS') {
-        url = 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png';
-      }
-    }
-
     Widget iconWidget;
-    if (url != null && url.isNotEmpty) {
+    
+    // 1. اگر API عکس اختصاصی داده بود (مثل CoinGecko برای کریپتوها)
+    if (asset.imageUrl != null && asset.imageUrl!.isNotEmpty) {
       iconWidget = Padding(
         padding: EdgeInsets.all(size * 0.15),
         child: Image.network(
-          url,
+          asset.imageUrl!,
           fit: BoxFit.contain,
-          errorBuilder: (_,__,___) => Icon(Icons.currency_exchange, color: C.primaryCyan, size: size * 0.6),
+          errorBuilder: (_,__,___) => _fallbackIcon(),
         ),
       );
-    } else {
-      iconWidget = Text(asset.icon, style: TextStyle(fontSize: size * 0.5));
+    } 
+    // 2. دلار آمریکا (استفاده از پرچم باکیفیت و پایدار)
+    else if (asset.code == 'USD_RLS') {
+      iconWidget = ClipOval(
+        child: Image.network(
+          'https://flagcdn.com/w80/us.png',
+          width: size * 0.7,
+          height: size * 0.7,
+          fit: BoxFit.cover,
+          errorBuilder: (_,__,___) => _fallbackIcon(),
+        ),
+      );
+    } 
+    // 3. یورو (استفاده از پرچم باکیفیت)
+    else if (asset.code == 'EUR_RLS') {
+      iconWidget = ClipOval(
+        child: Image.network(
+          'https://flagcdn.com/w80/eu.png',
+          width: size * 0.7,
+          height: size * 0.7,
+          fit: BoxFit.cover,
+          errorBuilder: (_,__,___) => _fallbackIcon(),
+        ),
+      );
+    } 
+    // 4. طلا (استفاده از آیکون فوق‌العاده شیک داخلی فلاتر)
+    else if (asset.code == 'GOLD_18_RLS') {
+      iconWidget = Icon(Icons.diamond_rounded, color: C.gold, size: size * 0.6);
+    } 
+    // 5. سکه (استفاده از آیکون داخلی)
+    else if (asset.code == 'COIN_EMAMI_RLS') {
+      iconWidget = Icon(Icons.monetization_on_rounded, color: C.gold, size: size * 0.6);
+    } 
+    // 6. بیت‌کوین (در صورتی که API عکس نداد، این آیکون نمایش داده میشه)
+    else if (asset.symbol == 'BTC') {
+      iconWidget = Icon(Icons.currency_bitcoin_rounded, color: Colors.orange, size: size * 0.6);
+    }
+    // 7. بقیه موارد
+    else {
+      iconWidget = _fallbackIcon();
     }
 
     return Hero(
@@ -664,17 +688,18 @@ class AssetIcon extends StatelessWidget {
       child: Container(
         width: size, height: size,
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C2A), // پس‌زمینه تیره برای همه
+          color: const Color(0xFF1C1C2A),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
         ),
         alignment: Alignment.center,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: iconWidget,
-        ),
+        child: iconWidget,
       ),
     );
+  }
+
+  Widget _fallbackIcon() {
+    return Text(asset.icon, style: TextStyle(fontSize: size * 0.5)); 
   }
 }
 
@@ -747,7 +772,7 @@ class HomeTab extends StatelessWidget {
             
             const SizedBox(height: 20),
 
-            // سرچ‌بار: با کلیک، به تب قیمت‌ها می‌رود و فوکوس می‌کند
+            // سرچ‌بار (با قابلیت فوکوس)
             TapScale(
               onTap: () {
                 state.setTab(1);
@@ -769,7 +794,7 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Quick Actions: لینک شده به دارایی‌های واقعی
+            // Quick Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -896,7 +921,7 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  // دکمه میان‌بر برای باز کردن مستقیم دارایی
+  // دکمه‌های میان‌بر که مستقیم به ارز وصل می‌شن
   Widget _quickAction(BuildContext context, AppState state, String code, String label, IconData fallbackIcon, Color color) {
     final asset = state.byCode(code) ?? state.byCode('CG_${code.replaceAll('CG_', '')}');
     return TapScale(
