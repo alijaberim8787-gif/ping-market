@@ -39,6 +39,7 @@ jobs:
         run: |
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
 
+      # ✅ مرحله 1: بازسازی فایل key.properties از Secrets
       - name: Setup Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
@@ -49,12 +50,14 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
+      # ✅ مرحله 2: تزریق تنظیمات امضا به build.gradle
       - name: Configure Signing
         run: |
           python3 -c "
-          import re
           f = 'android/app/build.gradle'
           content = open(f).read()
+          
+          # اضافه کردن خواندن key.properties
           prop_script = '''def keystoreProperties = new Properties()
           def keystorePropertiesFile = rootProject.file('key.properties')
           if (keystorePropertiesFile.exists()) {
@@ -62,6 +65,8 @@ jobs:
           }
           '''
           content = content.replace('android {', prop_script + '\nandroid {')
+          
+          # اضافه کردن signingConfigs
           sign_config = '''signingConfigs {
                   release {
                       keyAlias keystoreProperties['keyAlias']
@@ -72,7 +77,10 @@ jobs:
               }
           '''
           content = content.replace('buildTypes {', sign_config + '\n    buildTypes {')
+          
+          # جایگزینی دیباگ با ریلیز
           content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
+          
           open(f, 'w').write(content)
           "
 
