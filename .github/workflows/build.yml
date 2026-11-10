@@ -36,7 +36,7 @@ jobs:
           sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i 's/android {/android {\n        ndkVersion = "26.1.10909125"/' android/app/build.gradle
+          sed -i 's/ndkVersion flutter.ndkVersion/ndkVersion "26.1.10909125"/' android/app/build.gradle
 
       - name: Add INTERNET permission
         run: |
