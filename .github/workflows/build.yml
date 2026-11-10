@@ -27,16 +27,13 @@ jobs:
       - name: Create Android platform
         run: flutter create . --platforms=android --project-name=ping_market
 
-      - name: Fix App Name
+      - name: Fix App Name and Versions
         run: |
           sed -i 's/android:label="ping_market"/android:label="Ping Market"/' android/app/src/main/AndroidManifest.xml
-
-      - name: Fix AGP, Kotlin and NDK versions
-        run: |
           sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i 's/ndkVersion flutter.ndkVersion/ndkVersion "26.1.10909125"/' android/app/build.gradle
+          sed -i 's/android {/android {\n        ndkVersion = "26.1.10909125"/' android/app/build.gradle
 
       - name: Add INTERNET permission
         run: |
