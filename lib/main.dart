@@ -48,7 +48,9 @@ ThemeData get lightTheme => ThemeData(
   }),
 );
 
-// ... (کلاس S برای Localization و MarketAsset بدون تغییر اینجا قرار می‌گیرند) ...
+// ═══════════════════════════════════════════════════════
+//  LOCALIZATION
+// ═══════════════════════════════════════════════════════
 class S {
   static const Map<String, List<String>> _d = {
     'home': ['خانه', 'Home'], 'prices': ['قیمت‌ها', 'Prices'], 'favs': ['علاقه‌مندی‌ها', 'Favorites'],
@@ -74,6 +76,9 @@ class S {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  MODELS
+// ═══════════════════════════════════════════════════════
 class MarketAsset {
   final String code, symbol, labelFa, labelEn, icon;
   final String? imageUrl;
@@ -275,21 +280,17 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    // 1. Logo Animation
     _logoController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _logoScale = Tween(begin: 0.6, end: 1.0).animate(CurvedAnimation(parent: _logoController, curve: Curves.easeOutBack));
     _logoOpacity = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _logoController, curve: Curves.easeIn));
 
-    // 2. Text Animation (Starts after logo)
     _textController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _textSlide = Tween(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic));
     _textOpacity = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
 
-    // 3. Glow Pulse Animation (Infinite)
     _glowController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
     _glowOpacity = Tween(begin: 0.3, end: 0.8).animate(CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
 
-    // Start Sequence
     _logoController.forward().then((_) {
       _textController.forward();
     });
@@ -309,7 +310,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       backgroundColor: C.bg,
       body: Stack(
         children: [
-          // Background Glow
           Center(
             child: AnimatedBuilder(
               animation: _glowOpacity,
@@ -320,30 +320,23 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [
-                        C.primaryPurple.withOpacity(0.15 * _glowOpacity.value),
-                        Colors.transparent,
-                      ],
+                      colors: [C.primaryPurple.withOpacity(0.15 * _glowOpacity.value), Colors.transparent],
                     ),
                   ),
                 );
               },
             ),
           ),
-          
-          // Main Content
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Animated Logo
                 ScaleTransition(
                   scale: _logoScale,
                   child: FadeTransition(
                     opacity: _logoOpacity,
                     child: Container(
-                      width: 140,
-                      height: 140,
+                      width: 140, height: 140,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(35),
                         boxShadow: [
@@ -359,8 +352,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   ),
                 ),
                 const SizedBox(height: 32),
-                
-                // Animated Text
                 SlideTransition(
                   position: _textSlide,
                   child: FadeTransition(
@@ -381,10 +372,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     ),
                   ),
                 ),
-                
                 const SizedBox(height: 60),
-                
-                // Beautiful Loading Bar
                 FadeTransition(
                   opacity: _textOpacity,
                   child: SizedBox(
@@ -408,10 +396,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 }
 
-
-// ... (کلاس‌های AppShell, _FloatingNav, GlassCard, Sparkline, AssetIcon و ... دقیقاً مانند قبل هستند و نیازی به تغییر ندارند) ...
-// برای جلوگیری از طولانی شدن، از اینجا به بعد همان کدهای قبلی است. فقط نسخه SplashScreen تغییر کرد.
-
+// ═══════════════════════════════════════════════════════
+//  APP SHELL
+// ═══════════════════════════════════════════════════════
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
   @override
@@ -438,7 +425,6 @@ class _FloatingNav extends StatelessWidget {
     final state = context.watch<AppState>();
     final isDark = state.isDarkMode;
     final t = state.t;
-    
     final items = [
       (Icons.home_outlined, Icons.home_rounded, t('home')),
       (Icons.show_chart_outlined, Icons.show_chart_rounded, t('prices')),
@@ -484,6 +470,9 @@ class _FloatingNav extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  ANIMATION & CORE WIDGETS
+// ═══════════════════════════════════════════════════════
 class TapScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -639,5 +628,897 @@ class AssetIcon extends StatelessWidget {
   }
 }
 
-// (کدهای HomeTab, PricesTab, FavoritesTab, SettingsTab و DetailScreen دقیقاً مانند پیام قبلی هستند، نیازی به تکرار نیست)
-// فقط کافیه همون کدهای قبلی رو بعد از این بخش در فایل main.dart کپی کنی.
+// ═══════════════════════════════════════════════════════
+//  HOME TAB
+// ═══════════════════════════════════════════════════════
+class HomeTab extends StatelessWidget {
+  const HomeTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final isDark = state.isDarkMode;
+    final t = state.t;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return SafeArea(
+      bottom: false,
+      child: RefreshIndicator(
+        color: C.primaryPurple,
+        backgroundColor: isDark ? const Color(0xFF11111A) : Colors.white,
+        onRefresh: state.refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+          children: [
+            Row(
+              children: [
+                TapScale(
+                  onTap: () => _showNotif(context, state),
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(10),
+                    child: Icon(Icons.notifications_none_rounded, color: textColor),
+                  ),
+                ),
+                const Spacer(),
+                Column(
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(text: 'Ping ', style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.w800)),
+                          const TextSpan(text: 'Market', style: TextStyle(color: C.primaryPurple, fontSize: 20, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                    Text('Real-time Prices', style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 10)),
+                  ],
+                ),
+                const Spacer(),
+                TapScale(
+                  onTap: state.toggleLang,
+                  child: GlassCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Text(state.lang == 'fa' ? 'فا' : 'EN', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            if (!state.loading && state.featuredAsset != null)
+              TapScale(
+                onTap: () => _showFeaturedSelector(context, state),
+                child: _buildFeaturedCard(state, state.featuredAsset!),
+              )
+            else if (state.loading)
+              const ShimmerSkeleton(height: 160)
+            else
+              _buildErrorCard(context, state),
+            
+            const SizedBox(height: 20),
+
+            TapScale(
+              onTap: () => state.setTab(1),
+              child: GlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.search_rounded, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(t('searchHint'), style: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38))),
+                    Icon(Icons.tune_rounded, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _quickAction(context, state, Icons.diamond_rounded, t('gold'), C.gold, 1),
+                _quickAction(context, state, Icons.attach_money_rounded, t('dollar'), C.green, 1),
+                _quickAction(context, state, Icons.currency_bitcoin_rounded, t('bitcoin'), Colors.orange, 2),
+                _quickAction(context, state, Icons.grid_view_rounded, t('allMarkets'), Colors.blueAccent, 0),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            if (state.loading) ...[
+              const ShimmerSkeleton(height: 80),
+              const ShimmerSkeleton(height: 80),
+              const ShimmerSkeleton(height: 80),
+            ]
+            else if (state.error != null && state.all.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, color: C.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text(state.error!, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54), textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: state.refresh,
+                        style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple),
+                        child: Text(t('retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (state.all.isNotEmpty)
+              ...state.all.take(4).toList().asMap().entries.map((entry) {
+                return StaggeredListItem(
+                  index: entry.key,
+                  child: _homePriceRow(context, state, entry.value),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedCard(AppState state, MarketAsset asset) {
+    final isUp = asset.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF4A148C), Color(0xFF1A237E)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: C.primaryPurple.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Stack(
+        children: [
+          Positioned(right: -20, bottom: -20, child: Icon(Icons.show_chart_rounded, size: 120, color: Colors.white.withOpacity(0.05))),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  AssetIcon(asset: asset, size: 40),
+                  const SizedBox(width: 12),
+                  Text(asset.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  const Icon(Icons.touch_app_rounded, color: Colors.white54, size: 20),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(asset.displayPrice, style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(isUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: changeColor, size: 16),
+                  const SizedBox(width: 4),
+                  Text(asset.changeText, style: TextStyle(color: changeColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeaturedSelector(BuildContext context, AppState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: state.isDarkMode ? const Color(0xFF11111A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(state.t('selectFeatured'), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: state.all.length,
+                  itemBuilder: (_, i) {
+                    final a = state.all[i];
+                    return ListTile(
+                      leading: AssetIcon(asset: a, size: 40),
+                      title: Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black)),
+                      onTap: () { state.setFeatured(a.code); Navigator.pop(ctx); },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _quickAction(BuildContext context, AppState state, IconData icon, String label, Color color, int filter) {
+    return TapScale(
+      onTap: () { state.setPricesFilter(filter); state.setTab(1); },
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 30),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _homePriceRow(BuildContext context, AppState state, MarketAsset a) {
+    final isUp = a.change >= 0;
+    return TapScale(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GlassCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              AssetIcon(asset: a, size: 46),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(a.displayPrice, style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right_rounded, color: state.isDarkMode ? const Color(0xFF606070) : Colors.black38),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, AppState state) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            const Icon(Icons.wifi_off_rounded, color: C.red, size: 48),
+            const SizedBox(height: 16),
+            Text(state.error ?? 'Error', style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54), textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: state.refresh, style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple), child: Text(state.t('retry'))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNotif(BuildContext context, AppState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: state.isDarkMode ? const Color(0xFF11111A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.notifications_none_rounded, color: C.primaryPurple, size: 40),
+            const SizedBox(height: 16),
+            Text(state.t('notifications'), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(state.t('noNotif'), style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PRICES TAB
+// ═══════════════════════════════════════════════════════
+class PricesTab extends StatefulWidget {
+  const PricesTab({super.key});
+  @override
+  State<PricesTab> createState() => _PricesTabState();
+}
+
+class _PricesTabState extends State<PricesTab> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() { _searchCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final isDark = state.isDarkMode;
+    final t = state.t;
+    final textColor = isDark ? Colors.white : Colors.black;
+    
+    List<MarketAsset> list = state.all;
+    if (state.pricesFilter == 1) list = state.iran;
+    if (state.pricesFilter == 2) list = state.crypto;
+    
+    if (_query.isNotEmpty) {
+      list = list.where((a) => a.displayLabelFor(state.lang).toLowerCase().contains(_query.toLowerCase())).toList();
+    }
+
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Row(
+              children: [
+                const Icon(Icons.bar_chart_rounded, color: C.primaryCyan, size: 28),
+                const SizedBox(width: 10),
+                Text(t('prices'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: (v) => setState(() => _query = v),
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  hintText: t('searchHint'),
+                  hintStyle: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38),
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search_rounded, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                _filterPill(state, t('all'), 0),
+                _filterPill(state, t('currency'), 1),
+                _filterPill(state, t('crypto'), 2),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: RefreshIndicator(
+              color: C.primaryPurple,
+              backgroundColor: isDark ? const Color(0xFF11111A) : Colors.white,
+              onRefresh: state.refresh,
+              child: state.loading 
+                  ? ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: const [ShimmerSkeleton(height: 80), ShimmerSkeleton(height: 80), ShimmerSkeleton(height: 80)],
+                    )
+                  : list.isEmpty
+                      ? Center(child: Text(t('noResults'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)))
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                          children: list.asMap().entries.map((entry) {
+                            final a = entry.value;
+                            final isUp = a.change >= 0;
+                            return StaggeredListItem(
+                              index: entry.key > 10 ? 10 : entry.key,
+                              child: TapScale(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: GlassCard(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        AssetIcon(asset: a, size: 46),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(a.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                              const SizedBox(height: 4),
+                                              Text(a.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                                            ],
+                                          ),
+                                        ),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
+                                            const SizedBox(height: 4),
+                                            Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(Icons.chevron_right_rounded, color: isDark ? const Color(0xFF606070) : Colors.black38),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterPill(AppState state, String label, int idx) {
+    final sel = state.pricesFilter == idx;
+    return TapScale(
+      onTap: () => state.setPricesFilter(idx),
+      child: Container(
+        margin: const EdgeInsets.only(left: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: sel ? const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]) : null,
+          color: sel ? null : (state.isDarkMode ? const Color(0xFF1C1C2A) : Colors.white),
+          borderRadius: BorderRadius.circular(20),
+          border: sel ? null : Border.all(color: state.isDarkMode ? Colors.white10 : Colors.black12),
+        ),
+        child: Text(label, style: TextStyle(color: sel ? Colors.white : (state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54), fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  FAVORITES TAB
+// ═══════════════════════════════════════════════════════
+class FavoritesTab extends StatelessWidget {
+  const FavoritesTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final isDark = state.isDarkMode;
+    final t = state.t;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Row(
+              children: [
+                const Icon(Icons.star_rounded, color: C.primaryCyan, size: 28),
+                const SizedBox(width: 10),
+                Text(t('favs'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: state.favList.isEmpty
+                ? Center(child: Text(t('noFavs'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)))
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                    children: state.favList.asMap().entries.map((entry) {
+                      final a = entry.value;
+                      final isUp = a.change >= 0;
+                      return StaggeredListItem(
+                        index: entry.key,
+                        child: TapScale(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: GlassCard(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  AssetIcon(asset: a, size: 46),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(a.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 4),
+                                        Text(a.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 4),
+                                      Sparkline(data: a.sparkline, color: isUp ? C.green : C.red),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TapScale(
+                                    onTap: () => state.toggleFav(a.code),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4.0),
+                                      child: Icon(Icons.delete_outline_rounded, color: C.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS TAB
+// ═══════════════════════════════════════════════════════
+class SettingsTab extends StatelessWidget {
+  const SettingsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final isDark = state.isDarkMode;
+    final t = state.t;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.settings_rounded, color: C.primaryCyan, size: 28),
+              const SizedBox(width: 10),
+              Text(t('settings'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 30),
+          _settingItem(
+            context, state,
+            Icons.wb_sunny_rounded, t('darkMode'), 
+            trailing: Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, color: C.primaryPurple),
+            onTap: state.toggleTheme,
+          ),
+          _settingItem(
+            context, state,
+            Icons.language_rounded, t('language'), 
+            trailing: Text(state.lang == 'fa' ? 'فارسی' : 'English', style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)),
+            onTap: state.toggleLang,
+          ),
+          _settingItem(
+            context, state,
+            Icons.notifications_none_rounded, t('notifications'),
+            onTap: () => _showMsg(context, t('notifications'), t('noNotif'), isDark),
+          ),
+          _settingItem(
+            context, state,
+            Icons.headset_mic_rounded, t('support'),
+            onTap: () => _showMsg(context, t('support'), t('supportText'), isDark),
+          ),
+          _settingItem(
+            context, state,
+            Icons.shield_outlined, t('privacy'),
+            onTap: () => _showMsg(context, t('privacy'), t('privacyText'), isDark),
+          ),
+          _settingItem(
+            context, state,
+            Icons.info_outline_rounded, t('about'),
+            onTap: () => _showMsg(context, t('about'), t('aboutText'), isDark),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMsg(BuildContext context, String title, String text, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1C1C2A) : Colors.white,
+        title: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        content: Text(text, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, height: 1.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('باشه', style: TextStyle(color: C.primaryPurple, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingItem(BuildContext context, AppState state, IconData icon, String title, {Widget? trailing, required VoidCallback onTap}) {
+    final isDark = state.isDarkMode;
+    return TapScale(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54),
+              const SizedBox(width: 16),
+              Expanded(child: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600))),
+              if (trailing != null) trailing,
+              if (trailing == null) Icon(Icons.chevron_left_rounded, color: isDark ? const Color(0xFF606070) : Colors.black38),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETAIL SCREEN
+// ═══════════════════════════════════════════════════════
+class DetailScreen extends StatefulWidget {
+  final MarketAsset asset;
+  const DetailScreen({super.key, required this.asset});
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  int _rangeIdx = 0;
+  static const _ranges = ['1D', '1W', '1M', '3M', '1Y'];
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final isDark = state.isDarkMode;
+    final a = widget.asset;
+    final t = state.t;
+    final isUp = a.change >= 0;
+    final changeColor = isUp ? C.green : C.red;
+    final isFav = state.favorites.contains(a.code);
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    final base = a.sparkline;
+    final mult = [1, 2, 4, 12, 30][_rangeIdx];
+    final ext = List<double>.from(base);
+    for (int k = 0; k < mult - 1; k++) {
+      final r = Random(a.code.hashCode + k);
+      for (int i = 0; i < base.length; i++) {
+        ext.add(ext.last + (r.nextDouble() - 0.48) * 3);
+      }
+    }
+    final high = ext.reduce(max).toDouble();
+    final low = ext.reduce(min).toDouble();
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF05050A) : const Color(0xFFF4F6FA),
+      appBar: AppBar(
+        leading: TapScale(
+          onTap: () => Navigator.pop(context),
+          child: Icon(Icons.arrow_back_rounded, color: textColor),
+        ),
+        title: Text(a.displayLabelFor(state.lang), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
+        actions: [
+          TapScale(
+            onTap: () => state.toggleFav(a.code),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: C.gold),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+          children: [
+            GlassCard(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  AssetIcon(asset: a, size: 60),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(a.displayLabelFor(state.lang), style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 14)),
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(a.displayPrice, style: TextStyle(color: textColor, fontSize: 28, fontWeight: FontWeight.w900)),
+                            const SizedBox(width: 6),
+                            Text(a.isCrypto ? 'USD' : t('toman'), style: TextStyle(color: isDark ? Colors.white54 : Colors.black38, fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            Row(
+              children: [
+                Icon(isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: changeColor, size: 20),
+                const SizedBox(width: 6),
+                Text(a.changeText, style: TextStyle(color: changeColor, fontSize: 16, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            Row(
+              children: List.generate(_ranges.length, (i) {
+                final sel = _rangeIdx == i;
+                return Expanded(
+                  child: TapScale(
+                    onTap: () => setState(() => _rangeIdx = i),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: sel ? C.primaryPurple : (isDark ? const Color(0xFF1C1C2A) : Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: sel ? C.primaryCyan : (isDark ? Colors.white10 : Colors.black12)),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _ranges[i],
+                        style: TextStyle(color: sel ? Colors.white : (isDark ? const Color(0xFFA0A0B0) : Colors.black54), fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 24),
+
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 200,
+                    child: CustomPaint(painter: _ChartPainter(ext, changeColor), child: const SizedBox.expand()),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(low.toStringAsFixed(1), style: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38, fontSize: 11)),
+                      Text(high.toStringAsFixed(1), style: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38, fontSize: 11)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _statRow(t('currentPrice'), a.displayPrice, textColor, isDark),
+                  Divider(height: 24, color: isDark ? Colors.white.withOpacity(0.05) : Colors.black12),
+                  _statRow(t('dailyChange'), a.changeText, changeColor, isDark),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            TapScale(
+              onTap: () => state.toggleFav(a.code),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: isFav ? null : const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]),
+                  color: isFav ? (isDark ? const Color(0xFF1C1C2A) : Colors.white) : null,
+                  borderRadius: BorderRadius.circular(16),
+                  border: isFav ? Border.all(color: C.primaryPurple) : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: isFav ? C.primaryPurple : Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      isFav ? t('removeFromWatch') : t('addToWatch'),
+                      style: TextStyle(color: isFav ? C.primaryPurple : Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statRow(String label, String value, Color color, bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 14)),
+        Text(value, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+class _ChartPainter extends CustomPainter {
+  final List<double> data;
+  final Color color;
+  _ChartPainter(this.data, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.length < 2) return;
+    final minV = data.reduce(min).toDouble();
+    final maxV = data.reduce(max).toDouble();
+    final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
+
+    final linePath = Path();
+    final fillPath = Path()..moveTo(0, size.height);
+
+    for (int i = 0; i < data.length; i++) {
+      final x = (i / (data.length - 1)) * size.width;
+      final y = size.height - ((data[i] - minV) / range) * (size.height - 10) - 5;
+      if (i == 0) {
+        linePath.moveTo(x, y);
+      } else {
+        linePath.lineTo(x, y);
+      }
+      fillPath.lineTo(x, y);
+    }
+    fillPath..lineTo(size.width, size.height)..close();
+
+    canvas.drawPath(fillPath, Paint()..shader = LinearGradient(
+      colors: [color.withOpacity(0.3), color.withOpacity(0)],
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
+
+    canvas.drawPath(linePath, Paint()..color = color..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    
+    final lx = size.width;
+    final ly = size.height - ((data.last - minV) / range) * (size.height - 10) - 5;
+    canvas.drawCircle(Offset(lx, ly), 4, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChartPainter old) => false;
+}
