@@ -131,7 +131,7 @@ class MarketAsset {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP STATE
+//  APP STATE (Fix: Network Error Catching)
 // ═══════════════════════════════════════════════════════
 class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [], crypto = [];
@@ -161,31 +161,42 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    loading = iran.isEmpty && crypto.isEmpty;
-    error = null; notifyListeners();
-    try { await Future.wait([_loadAssets(), _loadCrypto()]).timeout(const Duration(seconds: 15)); } 
-    catch (e) { error = t('connError'); } 
-    finally { loading = false; notifyListeners(); }
+    loading = true;
+    error = null; 
+    notifyListeners();
+    
+    try { 
+      await Future.wait([_loadAssets(), _loadCrypto()]).timeout(const Duration(seconds: 15)); 
+    } catch (e) { 
+      error = t('connError'); 
+    } finally { 
+      loading = false; 
+      notifyListeners(); 
+    }
   }
 
   Future<void> _loadAssets() async {
-    try {
-      final r = await http.get(Uri.parse(kAssetsUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
-      if (r.statusCode == 200) {
-        final data = jsonDecode(r.body);
-        if (data['assets'] != null) iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
+    final r = await http.get(Uri.parse(kAssetsUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
+    if (r.statusCode == 200) {
+      final data = jsonDecode(r.body);
+      if (data['assets'] != null) {
+        iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
       }
-    } catch (e) {}
+    } else {
+      throw Exception('Failed to load assets');
+    }
   }
 
   Future<void> _loadCrypto() async {
-    try {
-      final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
-      if (r.statusCode == 200) {
-        final data = jsonDecode(r.body);
-        if (data['assets'] != null) crypto = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
+    final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
+    if (r.statusCode == 200) {
+      final data = jsonDecode(r.body);
+      if (data['assets'] != null) {
+        crypto = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
       }
-    } catch (_) {}
+    } else {
+      throw Exception('Failed to load crypto');
+    }
   }
 
   Future<void> toggleFav(String code) async {
@@ -214,7 +225,7 @@ class AppState extends ChangeNotifier {
 }
 
 // ═══════════════════════════════════════════════════════
-//  MAIN APP (WITH ANIMATED SPLASH)
+//  MAIN APP (WITH SPLASH FIX)
 // ═══════════════════════════════════════════════════════
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -234,7 +245,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(milliseconds: 3500), () {
+    Timer(const Duration(milliseconds: 3200), () {
       if (mounted) setState(() => showSplash = false);
     });
   }
@@ -250,7 +261,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
       darkTheme: darkTheme,
       locale: Locale(state.lang),
       home: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 800),
+        duration: const Duration(milliseconds: 600),
         child: showSplash ? const SplashScreen() : const AppShell(),
       ),
     );
@@ -258,7 +269,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  BEAUTIFUL ANIMATED SPLASH SCREEN
+//  BEAUTIFUL ANIMATED SPLASH SCREEN (Fix: Mounted Check)
 // ═══════════════════════════════════════════════════════
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -292,7 +303,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _glowOpacity = Tween(begin: 0.3, end: 0.8).animate(CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
 
     _logoController.forward().then((_) {
-      _textController.forward();
+      if (mounted) _textController.forward(); // Fix: Prevent crash if disposed
     });
   }
 
@@ -315,8 +326,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               animation: _glowOpacity,
               builder: (context, child) {
                 return Container(
-                  width: 300,
-                  height: 300,
+                  width: 300, height: 300,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
