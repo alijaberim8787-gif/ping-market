@@ -33,13 +33,11 @@ jobs:
           sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i 's/android {/android {\n        ndkVersion = "26.1.10909125"/' android/app/build.gradle
 
       - name: Add INTERNET permission
         run: |
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
 
-      # ✅ مرحله 1: بازسازی فایل key.properties از Secrets
       - name: Setup Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
@@ -50,24 +48,67 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # ✅ مرحله 2: تزریق تنظیمات امضا به build.gradle
-      - name: Configure Signing
+      # ✅ بازنویسی کامل فایل build.gradle برای اعمال ۱۰۰٪ کلید انتشار
+      - name: Overwrite build.gradle for Release Signing
         run: |
-          python3 -c "
-          f = 'android/app/build.gradle'
-          content = open(f).read()
-          
-          # اضافه کردن خواندن key.properties
-          prop_script = '''def keystoreProperties = new Properties()
+          cat << 'EOF' > android/app/build.gradle
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          def localProperties = new Properties()
+          def localPropertiesFile = rootProject.file('local.properties')
+          if (localPropertiesFile.exists()) {
+              localPropertiesFile.withReader('UTF-8') { reader ->
+                  localProperties.load(reader)
+              }
+          }
+
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) {
+              flutterVersionCode = '1'
+          }
+
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) {
+              flutterVersionName = '1.0'
+          }
+
+          def keystoreProperties = new Properties()
           def keystorePropertiesFile = rootProject.file('key.properties')
           if (keystorePropertiesFile.exists()) {
               keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
           }
-          '''
-          content = content.replace('android {', prop_script + '\nandroid {')
-          
-          # اضافه کردن signingConfigs
-          sign_config = '''signingConfigs {
+
+          android {
+              namespace "com.example.ping_market"
+              compileSdk flutter.compileSdkVersion
+              ndkVersion "26.1.10909125"
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+
+              sourceSets {
+                  main.java.srcDirs += 'src/main/kotlin'
+              }
+
+              defaultConfig {
+                  applicationId "com.example.ping_market"
+                  minSdkVersion flutter.minSdkVersion
+                  targetSdkVersion flutter.targetSdkVersion
+                  versionCode flutterVersionCode.toInteger()
+                  versionName flutterVersionName
+              }
+
+              signingConfigs {
                   release {
                       keyAlias keystoreProperties['keyAlias']
                       keyPassword keystoreProperties['keyPassword']
@@ -75,14 +116,18 @@ jobs:
                       storePassword keystoreProperties['storePassword']
                   }
               }
-          '''
-          content = content.replace('buildTypes {', sign_config + '\n    buildTypes {')
-          
-          # جایگزینی دیباگ با ریلیز
-          content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
-          
-          open(f, 'w').write(content)
-          "
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+          EOF
 
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
