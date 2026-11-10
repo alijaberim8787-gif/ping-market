@@ -27,6 +27,10 @@ jobs:
       - name: Create Android platform
         run: flutter create . --platforms=android --project-name=ping_market
 
+      - name: Fix App Name
+        run: |
+          sed -i 's/android:label="ping_market"/android:label="Ping Market"/' android/app/src/main/AndroidManifest.xml
+
       - name: Fix AGP, Kotlin and NDK versions
         run: |
           sed -i 's/id "com.android.application" version ".*"/id "com.android.application" version "8.5.2"/' android/settings.gradle
@@ -54,8 +58,6 @@ jobs:
           import re
           f = 'android/app/build.gradle'
           content = open(f).read()
-          
-          # Add properties read
           prop_script = '''def keystoreProperties = new Properties()
           def keystorePropertiesFile = rootProject.file('key.properties')
           if (keystorePropertiesFile.exists()) {
@@ -63,8 +65,6 @@ jobs:
           }
           '''
           content = content.replace('android {', prop_script + '\nandroid {')
-          
-          # Add signingConfigs
           sign_config = '''signingConfigs {
                   release {
                       keyAlias keystoreProperties['keyAlias']
@@ -75,10 +75,7 @@ jobs:
               }
           '''
           content = content.replace('buildTypes {', sign_config + '\n    buildTypes {')
-          
-          # Use in release build
           content = content.replace('signingConfig signingConfigs.debug', 'signingConfig signingConfigs.release')
-          
           open(f, 'w').write(content)
           "
 
