@@ -66,7 +66,7 @@ class S {
     'noFavs': ['هنوز چیزی اضافه نکردی', 'Nothing added yet'], 'noResults': ['موردی یافت نشد', 'No results found'],
     'loading': ['در حال دریافت اطلاعات...', 'Loading data...'], 'retry': ['تلاش دوباره', 'Retry'],
     'connError': ['اتصال به اینترنت برقرار نشد.', 'Connection failed.'],
-    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای است.\n\nنسخه ۲.۱.۰', 'Ping Market is a platform for live prices.\n\nVersion 2.1.0'],
+    'aboutText': ['پینگ مارکت یک پلتفرم برای مشاهده قیمت لحظه‌ای است.\n\nنسخه ۲.۱.۱', 'Ping Market is a platform for live prices.\n\nVersion 2.1.1'],
     'supportText': ['mrpingshop.ir', 'mrpingshop.ir'], 'privacyText': ['اطلاعات شما کاملاً محرمانه است.', 'Your data is private.'],
     'noNotif': ['اعلان جدیدی وجود ندارد.', 'No new notifications.'], 'selectFeatured': ['انتخاب ارز برای نمایش در صفحه اصلی', 'Select asset for home banner'],
   };
@@ -131,7 +131,7 @@ class MarketAsset {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP STATE (Fix: Network Error Catching)
+//  APP STATE
 // ═══════════════════════════════════════════════════════
 class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [], crypto = [];
@@ -142,10 +142,17 @@ class AppState extends ChangeNotifier {
   bool isDarkMode = true;
   int selectedTab = 0, pricesFilter = 0;
   String featuredCode = 'USD_RLS';
+  
+  final FocusNode searchFocusNode = FocusNode(); // برای فوکوس روی سرچ
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
   MarketAsset? get featuredAsset => all.isEmpty ? null : all.firstWhere((a) => a.code == featuredCode, orElse: () => all.first);
+
+  MarketAsset? byCode(String code) {
+    for (var a in all) { if (a.code == code) return a; }
+    return null;
+  }
 
   void setTab(int index) { selectedTab = index; notifyListeners(); }
   void setPricesFilter(int index) { pricesFilter = index; notifyListeners(); }
@@ -161,10 +168,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    loading = true;
+    loading = iran.isEmpty && crypto.isEmpty;
     error = null; 
     notifyListeners();
-    
     try { 
       await Future.wait([_loadAssets(), _loadCrypto()]).timeout(const Duration(seconds: 15)); 
     } catch (e) { 
@@ -176,27 +182,23 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _loadAssets() async {
-    final r = await http.get(Uri.parse(kAssetsUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
-    if (r.statusCode == 200) {
-      final data = jsonDecode(r.body);
-      if (data['assets'] != null) {
-        iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
+    try {
+      final r = await http.get(Uri.parse(kAssetsUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        if (data['assets'] != null) iran = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
       }
-    } else {
-      throw Exception('Failed to load assets');
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadCrypto() async {
-    final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
-    if (r.statusCode == 200) {
-      final data = jsonDecode(r.body);
-      if (data['assets'] != null) {
-        crypto = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
+    try {
+      final r = await http.get(Uri.parse(kCryptoUrl), headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 10));
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        if (data['assets'] != null) crypto = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList();
       }
-    } else {
-      throw Exception('Failed to load crypto');
-    }
+    } catch (_) {}
   }
 
   Future<void> toggleFav(String code) async {
@@ -225,7 +227,7 @@ class AppState extends ChangeNotifier {
 }
 
 // ═══════════════════════════════════════════════════════
-//  MAIN APP (WITH SPLASH FIX)
+//  MAIN APP
 // ═══════════════════════════════════════════════════════
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -245,7 +247,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(milliseconds: 3200), () {
+    Timer(const Duration(milliseconds: 3500), () {
       if (mounted) setState(() => showSplash = false);
     });
   }
@@ -261,7 +263,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
       darkTheme: darkTheme,
       locale: Locale(state.lang),
       home: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 600),
+        duration: const Duration(milliseconds: 800),
         child: showSplash ? const SplashScreen() : const AppShell(),
       ),
     );
@@ -269,7 +271,7 @@ class _PingMarketAppState extends State<PingMarketApp> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  BEAUTIFUL ANIMATED SPLASH SCREEN (Fix: Mounted Check)
+//  SPLASH SCREEN
 // ═══════════════════════════════════════════════════════
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -303,7 +305,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _glowOpacity = Tween(begin: 0.3, end: 0.8).animate(CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
 
     _logoController.forward().then((_) {
-      if (mounted) _textController.forward(); // Fix: Prevent crash if disposed
+      if (mounted) _textController.forward();
     });
   }
 
@@ -617,24 +619,62 @@ class _SparkPainter extends CustomPainter {
   bool shouldRepaint(covariant _SparkPainter old) => false;
 }
 
+// ═══════════════════════════════════════════════════════
+//  ASSET ICON (با آیکون‌های باکیفیت و واقعی)
+// ═══════════════════════════════════════════════════════
 class AssetIcon extends StatelessWidget {
   final MarketAsset asset;
   final double size;
   const AssetIcon({super.key, required this.asset, this.size = 44});
+
   @override
   Widget build(BuildContext context) {
-    Color bgColor = const Color(0xFF1C1C2A);
-    Widget iconWidget = Text(asset.icon, style: TextStyle(fontSize: size * 0.5));
-    if (asset.code == 'USD_RLS') { bgColor = const Color(0xFF0B4A29); iconWidget = const Text('\$', style: TextStyle(color: C.green, fontSize: 24, fontWeight: FontWeight.bold)); } 
-    else if (asset.code == 'GOLD_18_RLS') { bgColor = const Color(0xFF4A3E0B); iconWidget = const Icon(Icons.diamond, color: C.gold, size: 24); } 
-    else if (asset.symbol == 'BTC') { bgColor = const Color(0xFF4A260B); iconWidget = const Text('₿', style: TextStyle(color: Colors.orange, fontSize: 26, fontWeight: FontWeight.bold)); } 
-    else if (asset.symbol == 'ETH') { bgColor = const Color(0xFF1F1F4A); iconWidget = const Text('Ξ', style: TextStyle(color: Colors.blueAccent, fontSize: 26, fontWeight: FontWeight.bold)); } 
-    else if (asset.symbol == 'USDT') { bgColor = const Color(0xFF0B4A3D); iconWidget = const Text('₮', style: TextStyle(color: Color(0xFF26A17B), fontSize: 24, fontWeight: FontWeight.bold)); } 
-    else if (asset.imageUrl != null && asset.imageUrl!.isNotEmpty) {
-      iconWidget = Image.network(asset.imageUrl!, width: size * 0.6, height: size * 0.6, errorBuilder: (_,__,___) => iconWidget);
-      bgColor = Colors.transparent;
+    // لینک عکس‌های باکیفیت برای دارایی‌های غیر کریپتو
+    String? url = asset.imageUrl;
+    if (url == null || url.isEmpty) {
+      if (asset.code == 'USD_RLS') {
+        url = 'https://cdn-icons-png.flaticon.com/512/1084/1084958.png'; // اسکناس دلار
+      } else if (asset.code == 'GOLD_18_RLS') {
+        url = 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png'; // شمش طلا
+      } else if (asset.code == 'COIN_EMAMI_RLS') {
+        url = 'https://cdn-icons-png.flaticon.com/512/1085/1085690.png'; // سکه
+      } else if (asset.code == 'EUR_RLS') {
+        url = 'https://cdn-icons-png.flaticon.com/512/1084/1084957.png'; // یورو
+      } else if (asset.code == 'BTC_RLS') {
+        url = 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png';
+      }
     }
-    return Hero(tag: 'icon_${asset.code}', child: Container(width: size, height: size, decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(14)), alignment: Alignment.center, child: iconWidget));
+
+    Widget iconWidget;
+    if (url != null && url.isNotEmpty) {
+      iconWidget = Padding(
+        padding: EdgeInsets.all(size * 0.15),
+        child: Image.network(
+          url,
+          fit: BoxFit.contain,
+          errorBuilder: (_,__,___) => Icon(Icons.currency_exchange, color: C.primaryCyan, size: size * 0.6),
+        ),
+      );
+    } else {
+      iconWidget = Text(asset.icon, style: TextStyle(fontSize: size * 0.5));
+    }
+
+    return Hero(
+      tag: 'icon_${asset.code}',
+      child: Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C2A), // پس‌زمینه تیره برای همه
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+        ),
+        alignment: Alignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: iconWidget,
+        ),
+      ),
+    );
   }
 }
 
@@ -707,8 +747,14 @@ class HomeTab extends StatelessWidget {
             
             const SizedBox(height: 20),
 
+            // سرچ‌بار: با کلیک، به تب قیمت‌ها می‌رود و فوکوس می‌کند
             TapScale(
-              onTap: () => state.setTab(1),
+              onTap: () {
+                state.setTab(1);
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  state.searchFocusNode.requestFocus();
+                });
+              },
               child: GlassCard(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
@@ -723,13 +769,14 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            // Quick Actions: لینک شده به دارایی‌های واقعی
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _quickAction(context, state, Icons.diamond_rounded, t('gold'), C.gold, 1),
-                _quickAction(context, state, Icons.attach_money_rounded, t('dollar'), C.green, 1),
-                _quickAction(context, state, Icons.currency_bitcoin_rounded, t('bitcoin'), Colors.orange, 2),
-                _quickAction(context, state, Icons.grid_view_rounded, t('allMarkets'), Colors.blueAccent, 0),
+                _quickAction(context, state, 'GOLD_18_RLS', 'طلا', Icons.diamond_rounded, C.gold),
+                _quickAction(context, state, 'USD_RLS', 'دلار', Icons.attach_money_rounded, C.green),
+                _quickAction(context, state, 'CG_BTC', 'بیت‌کوین', Icons.currency_bitcoin_rounded, Colors.orange),
+                _allMarketsAction(context, state, 'همه بازارها', Icons.grid_view_rounded, Colors.blueAccent),
               ],
             ),
             
@@ -849,9 +896,37 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _quickAction(BuildContext context, AppState state, IconData icon, String label, Color color, int filter) {
+  // دکمه میان‌بر برای باز کردن مستقیم دارایی
+  Widget _quickAction(BuildContext context, AppState state, String code, String label, IconData fallbackIcon, Color color) {
+    final asset = state.byCode(code) ?? state.byCode('CG_${code.replaceAll('CG_', '')}');
     return TapScale(
-      onTap: () { state.setPricesFilter(filter); state.setTab(1); },
+      onTap: () {
+        if (asset != null) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: asset)));
+        } else {
+          state.setPricesFilter(0);
+          state.setTab(1);
+        }
+      },
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        child: Column(
+          children: [
+            if (asset != null) 
+              AssetIcon(asset: asset, size: 32) 
+            else 
+              Icon(fallbackIcon, color: color, size: 30),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _allMarketsAction(BuildContext context, AppState state, String label, IconData icon, Color color) {
+    return TapScale(
+      onTap: () { state.setPricesFilter(0); state.setTab(1); },
       child: GlassCard(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         child: Column(
@@ -953,11 +1028,7 @@ class PricesTab extends StatefulWidget {
 }
 
 class _PricesTabState extends State<PricesTab> {
-  final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
-
-  @override
-  void dispose() { _searchCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -994,7 +1065,7 @@ class _PricesTabState extends State<PricesTab> {
             child: GlassCard(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: TextField(
-                controller: _searchCtrl,
+                focusNode: state.searchFocusNode, // فوکوس از صفحه هوم
                 onChanged: (v) => setState(() => _query = v),
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
