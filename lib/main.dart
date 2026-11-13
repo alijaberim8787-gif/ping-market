@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 // ═══════════════════════════════════════════════════════
 //  CONFIG & COLORS
@@ -45,6 +46,27 @@ ThemeData get lightTheme => ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: C.primaryPurple, brightness: Brightness.light),
   appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0, centerTitle: true),
 );
+
+// ═══════════════════════════════════════════════════════
+//  NOTIFICATION MANAGER
+// ═══════════════════════════════════════════════════════
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+Future<void> initNotifications() async {
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+}
+
+Future<void> showNotification(String title, String body) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    'chat_channel', 'Chat Notifications',
+    channelDescription: 'Notifications for broadcast messages',
+    importance: Importance.max, priority: Priority.high, showWhen: false,
+  );
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+  await flutterLocalNotificationsPlugin.show(0, title, body, platformChannelSpecifics);
+}
 
 // ═══════════════════════════════════════════════════════
 //  LOCALIZATION
@@ -128,6 +150,7 @@ class AppState extends ChangeNotifier {
   String? token, username, avatar; bool isAdmin = false;
   
   List<ChatMessage> chatMessages = [];
+  int _lastSystemMsgId = 0;
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
@@ -217,7 +240,20 @@ class AppState extends ChangeNotifier {
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         if (data['success']) {
-          chatMessages = (data['messages'] as List).map((e) => ChatMessage.fromJson(e)).toList();
+          final newMessages = (data['messages'] as List).map((e) => ChatMessage.fromJson(e)).toList();
+          
+          // Check for new system message to show notification
+          if (newMessages.isNotEmpty) {
+            final lastMsg = newMessages.last;
+            if (lastMsg.isSystem && lastMsg.id != _lastSystemMsgId) {
+              if (_lastSystemMsgId != 0) { // Don't notify on first load
+                showNotification('پیام همگانی', lastMsg.text);
+              }
+              _lastSystemMsgId = lastMsg.id;
+            }
+          }
+
+          chatMessages = newMessages;
           notifyListeners();
         }
       }
@@ -226,7 +262,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> sendChatMessage(String text) async {
     if (token == null || text.trim().isEmpty) return;
-    // Optimistic UI
     final tempId = -DateTime.now().millisecondsSinceEpoch;
     final tempMsg = ChatMessage(id: tempId, username: username!, text: text);
     chatMessages.add(tempMsg);
@@ -235,10 +270,7 @@ class AppState extends ChangeNotifier {
     try {
       final r = await http.post(Uri.parse(kSendMsgUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'text': text}));
       if (r.statusCode != 200) {
-        chatMessages.removeWhere((m) => m.id == tempId); // rollback if failed
-      } else {
-        // Just fetch to be safe
-        fetchChatMessages(); 
+        chatMessages.removeWhere((m) => m.id == tempId);
       }
     } catch (_) {
       chatMessages.removeWhere((m) => m.id == tempId);
@@ -278,8 +310,9 @@ class AppState extends ChangeNotifier {
 // ═══════════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════════
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initNotifications();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
   runApp(ChangeNotifierProvider(create: (_) => AppState()..init(), child: const PingMarketApp()));
 }
@@ -297,7 +330,7 @@ class PingMarketApp extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP SHELL (5 TABS)
+//  APP SHELL (FIXED ANIMATION)
 // ═══════════════════════════════════════════════════════
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
@@ -306,8 +339,9 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: ScaleTransition(scale: Tween<double>(begin: 0.95, end: 1).animate(animation), child: child)),
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
         child: IndexedStack(key: ValueKey(state.selectedTab), index: state.selectedTab, children: const [HomeTab(), PricesTab(), ChatTab(), FavoritesTab(), ProfileTab()]),
       ),
       bottomNavigationBar: _FloatingNav(index: state.selectedTab, onChanged: (i) => state.setTab(i)),
@@ -502,7 +536,7 @@ class _PricesTabState extends State<PricesTab> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  TAB 3: CHAT ROOM (LUXURY DESIGN)
+//  TAB 3: CHAT ROOM (REWRITTEN & FIXED)
 // ═══════════════════════════════════════════════════════
 class ChatTab extends StatefulWidget { const ChatTab({super.key}); @override State<ChatTab> createState() => _ChatTabState(); }
 class _ChatTabState extends State<ChatTab> {
@@ -510,11 +544,21 @@ class _ChatTabState extends State<ChatTab> {
   final ScrollController _scrollCtrl = ScrollController();
   Timer? _timer;
 
-  @override void initState() { super.initState(); _timer = Timer.periodic(const Duration(seconds: 2), (_) => _fetch()); _fetch(); }
+  @override void initState() { 
+    super.initState(); 
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _fetch()); 
+    _fetch(); 
+  }
+  
   @override void dispose() { _timer?.cancel(); _msgCtrl.dispose(); _scrollCtrl.dispose(); super.dispose(); }
 
   void _fetch() async { if (mounted) await context.read<AppState>().fetchChatMessages(); }
-  void _scroll() { WidgetsBinding.instance.addPostFrameCallback((_) { if (_scrollCtrl.hasClients) _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic); }); }
+  
+  void _scroll() { 
+    WidgetsBinding.instance.addPostFrameCallback((_) { 
+      if (_scrollCtrl.hasClients) _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic); 
+    }); 
+  }
 
   void _send() {
     final text = _msgCtrl.text.trim();
@@ -580,7 +624,7 @@ class FavoritesTab extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  TAB 5: PROFILE & AUTH (LUXURY DESIGN)
+//  TAB 5: PROFILE & AUTH
 // ═══════════════════════════════════════════════════════
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -692,6 +736,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   Map<String, dynamic> _stats = {};
   List<Map<String, dynamic>> _users = [];
   bool _loading = true;
+  final TextEditingController _broadcastCtrl = TextEditingController();
 
   @override void initState() { super.initState(); _tabController = TabController(length: 3, vsync: this); _loadData(); }
 
@@ -740,9 +785,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
       Text(t('broadcast'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
       const SizedBox(height: 16),
       GlassCard(child: Column(children: [
-        TextField(controller: TextEditingController(), style: const TextStyle(color: Colors.white), maxLines: 2, decoration: InputDecoration(hintText: t('broadcastHint'), hintStyle: const TextStyle(color: Colors.white38), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), onSubmitted: (v) { state.adminBroadcast(v); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پیام ارسال شد'))); }),
+        TextField(controller: _broadcastCtrl, style: const TextStyle(color: Colors.white), maxLines: 2, decoration: InputDecoration(hintText: t('broadcastHint'), hintStyle: const TextStyle(color: Colors.white38), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)))),
         const SizedBox(height: 16),
-        ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.send_rounded), label: Text(t('send')), style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+        TapScale(onTap: () { 
+          if (_broadcastCtrl.text.isNotEmpty) {
+            state.adminBroadcast(_broadcastCtrl.text); 
+            _broadcastCtrl.clear();
+            FocusScope.of(context).unfocus();
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پیام ارسال شد')));
+          }
+        }, child: Container(padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(gradient: const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), borderRadius: BorderRadius.circular(16)), alignment: Alignment.center, child: Text(t('send'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
       ])),
     ]);
   }
