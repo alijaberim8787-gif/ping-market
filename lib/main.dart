@@ -25,30 +25,25 @@ const String kAdminBroadcastUrl = '$kBackend/api/admin/broadcast';
 const String kAdminClearChatUrl = '$kBackend/api/admin/chat/clear';
 
 class C {
-  static const primaryPurple = Color(0xFF8A2BE2);
-  static const primaryCyan = Color(0xFF00E5FF);
+  static const primaryPurple = Color(0xFF9D4EDD);
+  static const primaryCyan = Color(0xFF00F5D4);
   static const gold = Color(0xFFFFD700);
-  static const green = Color(0xFF00FA9A);
+  static const green = Color(0xFF00F5A0);
   static const red = Color(0xFFFF3366);
-  static const bg = Color(0xFF05050A);
+  static const bg = Color(0xFF0A0A10);
+  static const cardBg = Color(0xFF151522);
 }
 
 ThemeData get darkTheme => ThemeData(
   useMaterial3: true, brightness: Brightness.dark, scaffoldBackgroundColor: C.bg,
   colorScheme: ColorScheme.fromSeed(seedColor: C.primaryPurple, brightness: Brightness.dark),
-  appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
-  pageTransitionsTheme: const PageTransitionsTheme(builders: {
-    TargetPlatform.android: CupertinoPageTransitionsBuilder(), TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-  }),
+  appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0, centerTitle: true),
 );
 
 ThemeData get lightTheme => ThemeData(
-  useMaterial3: true, brightness: Brightness.light, scaffoldBackgroundColor: const Color(0xFFF4F6FA),
+  useMaterial3: true, brightness: Brightness.light, scaffoldBackgroundColor: const Color(0xFFF0F2F5),
   colorScheme: ColorScheme.fromSeed(seedColor: C.primaryPurple, brightness: Brightness.light),
-  appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
-  pageTransitionsTheme: const PageTransitionsTheme(builders: {
-    TargetPlatform.android: CupertinoPageTransitionsBuilder(), TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-  }),
+  appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0, centerTitle: true),
 );
 
 // ═══════════════════════════════════════════════════════
@@ -57,41 +52,31 @@ ThemeData get lightTheme => ThemeData(
 class S {
   static const Map<String, List<String>> _d = {
     'home': ['خانه', 'Home'], 'prices': ['قیمت‌ها', 'Prices'], 'chat': ['چت روم', 'Chat'],
-    'favs': ['علاقه‌مندی‌ها', 'Favorites'], 'settings': ['پروفایل', 'Profile'],
+    'favs': ['علاقه‌مندی‌ها', 'Favorites'], 'profile': ['پروفایل', 'Profile'],
     'searchHint': ['جستجوی قیمت‌ها...', 'Search prices...'],
-    'all': ['همه', 'All'], 'currency': ['ارزها', 'Currencies'], 'crypto': ['کریپتو', 'Crypto'],
+    'all': ['همه', 'All'], 'iran': ['ایران', 'Iran'], 'crypto': ['کریپتو', 'Crypto'],
     'gold': ['طلا', 'Gold'], 'dollar': ['دلار', 'Dollar'], 'bitcoin': ['بیت‌کوین', 'Bitcoin'],
     'allMarkets': ['همه بازارها', 'All markets'], 'toman': ['تومان', 'Toman'],
-    'darkMode': ['حالت نمایش', 'Display mode'], 'language': ['زبان برنامه', 'App language'],
-    'notifications': ['اعلان‌ها', 'Notifications'], 'support': ['پشتیبانی', 'Support'],
-    'privacy': ['حریم خصوصی', 'Privacy'], 'about': ['درباره ما', 'About'],
-    'currentPrice': ['قیمت فعلی', 'Current Price'], 'dailyChange': ['تغییرات روزانه', 'Daily Change'],
-    'addToWatch': ['افزودن به علاقه‌مندی‌ها', 'Add to Favorites'], 'removeFromWatch': ['حذف از علاقه‌مندی‌ها', 'Remove from Favorites'],
-    'noFavs': ['هنوز چیزی اضافه نکردی', 'Nothing added yet'], 'noResults': ['موردی یافت نشد', 'No results found'],
-    'loading': ['در حال دریافت اطلاعات...', 'Loading data...'], 'retry': ['تلاش دوباره', 'Retry'],
-    'connError': ['اتصال به اینترنت برقرار نشد.', 'Connection failed.'],
-    'aboutText': ['پینگ مارکت نسخه ۲.۱.۷', 'Ping Market v2.1.7'],
-    'supportText': ['mrpingshop.ir', 'mrpingshop.ir'], 'privacyText': ['اطلاعات شما محرمانه است.', 'Your data is private.'],
-    'noNotif': ['اعلان جدیدی وجود ندارد.', 'No new notifications.'], 'selectFeatured': ['انتخاب ارز برای صفحه اصلی', 'Select asset for home'],
+    'darkMode': ['حالت تاریک', 'Dark mode'], 'language': ['زبان', 'Language'],
+    'currentPrice': ['قیمت فعلی', 'Current Price'], 'dailyChange': ['تغییرات', 'Change'],
+    'addToWatch': ['ذخیره', 'Add to Favorites'], 'removeFromWatch': ['حذف', 'Remove'],
+    'noFavs': ['لیست شما خالی است', 'Your list is empty'], 'noResults': ['موردی یافت نشد', 'No results'],
+    'loading': ['در حال بارگذاری...', 'Loading...'], 'retry': ['تلاش دوباره', 'Retry'],
     'login': ['ورود', 'Login'], 'register': ['ثبت‌نام', 'Register'],
-    'loginTitle': ['ورود به حساب', 'Login'], 'registerTitle': ['ساخت حساب جدید', 'Create Account'],
+    'loginTitle': ['ورود به حساب', 'Login'], 'registerTitle': ['ساخت حساب', 'Create Account'],
     'username': ['نام کاربری', 'Username'], 'password': ['رمز عبور', 'Password'],
     'logout': ['خروج', 'Logout'], 'adminPanel': ['پنل مدیریت', 'Admin Panel'],
-    'editProfile': ['ویرایش پروفایل', 'Edit Profile'], 'save': ['ذخیره', 'Save'], 'cancel': ['لغو', 'Cancel'],
-    'bio': ['بیوگرافی', 'Bio'], 'avatar': ['آواتار', 'Avatar'],
-    'typeMessage': ['پیام خود را بنویسید...', 'Type a message...'],
+    'editProfile': ['تغییر آواتار', 'Change Avatar'], 'save': ['ذخیره', 'Save'], 'cancel': ['لغو', 'Cancel'],
+    'typeMessage': ['پیام بنویسید...', 'Type a message...'],
     'loginToChat': ['برای ارسال پیام وارد شوید', 'Login to send messages'],
     'admin': ['مدیر', 'Admin'], 'user': ['کاربر', 'User'], 'banned': ['مسدود', 'Banned'],
     'noAccount': ['حساب ندارید؟ ثبت‌نام کنید', 'No account? Register'],
     'haveAccount': ['حساب دارید؟ وارد شوید', 'Have account? Login'],
-    'adminDashboard': ['داشبورد', 'Dashboard'], 'adminUsers': ['مدیریت کاربران', 'Users Mgmt'],
-    'adminChat': ['مدیریت چت', 'Chat Mgmt'], 'adminBroadcast': ['ارسال پیام همگانی', 'Broadcast'],
-    'totalUsers': ['کل کاربران', 'Total Users'], 'totalMsgs': ['کل پیام‌ها', 'Total Messages'],
-    'bannedUsers': ['کاربران مسدود', 'Banned Users'], 'clearChat': ['پاک کردن کل چت', 'Clear All Chat'],
-    'promote': ['ادمین کن', 'Make Admin'], 'demote': ['سلب ادمینی', 'Remove Admin'],
-    'ban': ['مسدود کن', 'Ban'], 'unban': ['رفع مسدودی', 'Unban'], 'delete': ['حذف', 'Delete'],
-    'broadcastHint': ['متن پیام برای همه...', 'Message text for everyone...'],
-    'send': ['ارسال', 'Send'], 'systemMsg': ['پیام سیستم', 'System Message'],
+    'adminDashboard': ['داشبورد', 'Dashboard'], 'adminUsers': ['کاربران', 'Users'], 'adminChat': ['چت', 'Chat'],
+    'totalUsers': ['کل کاربران', 'Total Users'], 'totalMsgs': ['کل پیام‌ها', 'Total Messages'], 'bannedUsers': ['مسدودها', 'Banned'],
+    'clearChat': ['پاک کردن چت', 'Clear Chat'], 'promote': ['ادمین کن', 'Make Admin'], 'demote': ['سلب ادمینی', 'Remove Admin'],
+    'ban': ['مسدود', 'Ban'], 'unban': ['رفع مسدودی', 'Unban'], 'delete': ['حذف', 'Delete'],
+    'broadcast': ['پیام همگانی', 'Broadcast'], 'broadcastHint': ['پیام برای همه...', 'Message for all...'],
   };
   static String get(String key, String lang) { final v = _d[key]; return v == null ? key : (lang == 'en' ? v[1] : v[0]); }
 }
@@ -140,10 +125,9 @@ class AppState extends ChangeNotifier {
   String lang = 'fa'; bool isDarkMode = true; int selectedTab = 0, pricesFilter = 0;
   String featuredCode = 'USD_RLS'; final FocusNode searchFocusNode = FocusNode();
 
-  String? token, username, avatar; String bio = 'بدون بیوگرافی'; bool isAdmin = false;
+  String? token, username, avatar; bool isAdmin = false;
   
   List<ChatMessage> chatMessages = [];
-  bool isSendingMsg = false;
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
@@ -159,14 +143,14 @@ class AppState extends ChangeNotifier {
     lang = p.getString('lang') ?? 'fa'; isDarkMode = p.getBool('dark') ?? true;
     featuredCode = p.getString('featured') ?? 'USD_RLS';
     token = p.getString('token'); username = p.getString('username');
-    avatar = p.getString('avatar'); bio = p.getString('bio') ?? 'بدون بیوگرافی'; isAdmin = p.getBool('isAdmin') ?? false;
+    avatar = p.getString('avatar'); isAdmin = p.getBool('isAdmin') ?? false;
     notifyListeners(); await refresh();
   }
 
   Future<void> refresh() async {
     loading = iran.isEmpty && crypto.isEmpty; error = null; notifyListeners();
     try { await Future.wait([_loadAssets(), _loadCrypto()]).timeout(const Duration(seconds: 15)); } 
-    catch (e) { error = t('connError'); } finally { loading = false; notifyListeners(); }
+    catch (e) { error = 'Connection Error'; } finally { loading = false; notifyListeners(); }
   }
 
   Future<void> _loadAssets() async {
@@ -187,13 +171,13 @@ class AppState extends ChangeNotifier {
       final r = await http.post(Uri.parse(kLoginUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'username': user, 'password': pass}));
       final data = jsonDecode(r.body);
       if (r.statusCode == 200 && data['success']) {
-        token = data['token']; username = data['username']; isAdmin = data['isAdmin'] ?? false; avatar = data['avatar']; bio = data['bio'];
+        token = data['token']; username = data['username']; isAdmin = data['isAdmin'] ?? false; avatar = data['avatar'];
         final p = await SharedPreferences.getInstance();
-        await p.setString('token', token!); await p.setString('username', username!); await p.setBool('isAdmin', isAdmin); await p.setString('avatar', avatar!); await p.setString('bio', bio);
+        await p.setString('token', token!); await p.setString('username', username!); await p.setBool('isAdmin', isAdmin); await p.setString('avatar', avatar!);
         notifyListeners(); return null;
       }
-      return data['error'] ?? 'خطا در ورود';
-    } catch (e) { return 'خطای اتصال'; }
+      return data['error'] ?? 'Error';
+    } catch (e) { return 'Connection error'; }
   }
 
   Future<String?> register(String user, String pass) async {
@@ -201,32 +185,32 @@ class AppState extends ChangeNotifier {
       final r = await http.post(Uri.parse(kRegisterUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'username': user, 'password': pass}));
       final data = jsonDecode(r.body);
       if (r.statusCode == 200 && data['success']) {
-        token = data['token']; username = data['username']; isAdmin = data['isAdmin'] ?? false; avatar = data['avatar']; bio = data['bio'];
+        token = data['token']; username = data['username']; isAdmin = data['isAdmin'] ?? false; avatar = data['avatar'];
         final p = await SharedPreferences.getInstance();
-        await p.setString('token', token!); await p.setString('username', username!); await p.setBool('isAdmin', isAdmin); await p.setString('avatar', avatar!); await p.setString('bio', bio);
+        await p.setString('token', token!); await p.setString('username', username!); await p.setBool('isAdmin', isAdmin); await p.setString('avatar', avatar!);
         notifyListeners(); return null;
       }
-      return data['error'] ?? 'خطا در ثبت‌نام';
-    } catch (e) { return 'خطای اتصال'; }
+      return data['error'] ?? 'Error';
+    } catch (e) { return 'Connection error'; }
   }
 
-  Future<void> updateProfile(String newAvatar, String newBio) async {
+  Future<void> updateAvatar(String newAvatar) async {
     try {
-      final r = await http.post(Uri.parse(kUpdateProfileUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'avatar': newAvatar, 'bio': newBio}));
+      final r = await http.post(Uri.parse(kUpdateProfileUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'avatar': newAvatar}));
       if (r.statusCode == 200) {
-        avatar = newAvatar; bio = newBio; notifyListeners();
-        final p = await SharedPreferences.getInstance(); await p.setString('avatar', newAvatar); await p.setString('bio', newBio);
+        avatar = newAvatar; notifyListeners();
+        final p = await SharedPreferences.getInstance(); await p.setString('avatar', newAvatar);
       }
     } catch (_) {}
   }
 
   Future<void> logout() async {
-    token = null; username = null; isAdmin = false; avatar = null; bio = 'بدون بیوگرافی';
-    final p = await SharedPreferences.getInstance(); await p.remove('token'); await p.remove('username'); await p.remove('isAdmin'); await p.remove('avatar'); await p.remove('bio');
+    token = null; username = null; isAdmin = false; avatar = null;
+    final p = await SharedPreferences.getInstance(); await p.remove('token'); await p.remove('username'); await p.remove('isAdmin'); await p.remove('avatar');
     notifyListeners();
   }
 
-  // Chat Methods (Optimistic)
+  // Chat Methods
   Future<void> fetchChatMessages() async {
     try {
       final r = await http.get(Uri.parse(kChatUrl));
@@ -242,21 +226,23 @@ class AppState extends ChangeNotifier {
 
   Future<void> sendChatMessage(String text) async {
     if (token == null || text.trim().isEmpty) return;
+    // Optimistic UI
     final tempId = -DateTime.now().millisecondsSinceEpoch;
     final tempMsg = ChatMessage(id: tempId, username: username!, text: text);
     chatMessages.add(tempMsg);
-    isSendingMsg = true;
     notifyListeners();
 
     try {
       final r = await http.post(Uri.parse(kSendMsgUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'text': text}));
       if (r.statusCode != 200) {
-        chatMessages.removeWhere((m) => m.id == tempId);
+        chatMessages.removeWhere((m) => m.id == tempId); // rollback if failed
+      } else {
+        // Just fetch to be safe
+        fetchChatMessages(); 
       }
     } catch (_) {
       chatMessages.removeWhere((m) => m.id == tempId);
     } finally {
-      isSendingMsg = false;
       notifyListeners();
     }
   }
@@ -298,68 +284,32 @@ void main() {
   runApp(ChangeNotifierProvider(create: (_) => AppState()..init(), child: const PingMarketApp()));
 }
 
-class PingMarketApp extends StatefulWidget {
+class PingMarketApp extends StatelessWidget {
   const PingMarketApp({super.key});
-  @override State<PingMarketApp> createState() => _PingMarketAppState();
-}
-
-class _PingMarketAppState extends State<PingMarketApp> {
-  bool showSplash = true;
-  @override void initState() { super.initState(); Timer(const Duration(milliseconds: 3500), () { if (mounted) setState(() => showSplash = false); }); }
   @override Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     return MaterialApp(
       debugShowCheckedModeBanner: false, title: 'Ping Market',
       themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light, theme: lightTheme, darkTheme: darkTheme, locale: Locale(state.lang),
-      home: AnimatedSwitcher(duration: const Duration(milliseconds: 800), child: showSplash ? const SplashScreen() : const AppShell()),
+      home: const AppShell(),
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════
-//  SPLASH & SHELL
+//  APP SHELL (5 TABS)
 // ═══════════════════════════════════════════════════════
-class SplashScreen extends StatefulWidget { const SplashScreen({super.key}); @override State<SplashScreen> createState() => _SplashScreenState(); }
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _logoController, _textController, _glowController;
-  late Animation<double> _logoScale, _logoOpacity, _textOpacity, _glowOpacity;
-  late Animation<Offset> _textSlide;
-
-  @override void initState() {
-    super.initState();
-    _logoController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _logoScale = Tween(begin: 0.6, end: 1.0).animate(CurvedAnimation(parent: _logoController, curve: Curves.easeOutBack));
-    _logoOpacity = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _logoController, curve: Curves.easeIn));
-    _textController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-    _textSlide = Tween(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic));
-    _textOpacity = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
-    _glowController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    _glowOpacity = Tween(begin: 0.3, end: 0.8).animate(CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
-    _logoController.forward().then((_) { if (mounted) _textController.forward(); });
-  }
-  @override void dispose() { _logoController.dispose(); _textController.dispose(); _glowController.dispose(); super.dispose(); }
-
-  @override Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: C.bg, body: Stack(children: [
-      Center(child: AnimatedBuilder(animation: _glowOpacity, builder: (context, child) => Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [C.primaryPurple.withOpacity(0.15 * _glowOpacity.value), Colors.transparent]))))),
-      Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ScaleTransition(scale: _logoScale, child: FadeTransition(opacity: _logoOpacity, child: Container(width: 140, height: 140, decoration: BoxDecoration(borderRadius: BorderRadius.circular(35), boxShadow: [BoxShadow(color: C.primaryPurple.withOpacity(0.4), blurRadius: 40, spreadRadius: 10), BoxShadow(color: C.primaryCyan.withOpacity(0.2), blurRadius: 20, spreadRadius: 2)]), child: ClipRRect(borderRadius: BorderRadius.circular(35), child: Image.asset('assets/logo.png', fit: BoxFit.cover))))),
-        const SizedBox(height: 32),
-        SlideTransition(position: _textSlide, child: FadeTransition(opacity: _textOpacity, child: Column(children: [RichText(text: const TextSpan(children: [TextSpan(text: 'Ping ', style: TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.w900, letterSpacing: -1)), TextSpan(text: 'Market', style: TextStyle(color: C.primaryCyan, fontSize: 38, fontWeight: FontWeight.w900, letterSpacing: -1))])), const SizedBox(height: 8), const Text('Real-time Prices · Global Markets', style: TextStyle(color: Colors.white54, fontSize: 13, letterSpacing: 1.2))]))),
-        const SizedBox(height: 60),
-        FadeTransition(opacity: _textOpacity, child: SizedBox(width: 180, child: ClipRRect(borderRadius: BorderRadius.circular(10), child: const LinearProgressIndicator(minHeight: 4, backgroundColor: Color(0xFF1C1C2A), valueColor: AlwaysStoppedAnimation<Color>(C.primaryPurple))))),
-      ])),
-    ]));
-  }
-}
-
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
   @override Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: state.selectedTab, children: const [HomeTab(), PricesTab(), ChatTab(), FavoritesTab(), ProfileTab()]),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: ScaleTransition(scale: Tween<double>(begin: 0.95, end: 1).animate(animation), child: child)),
+        child: IndexedStack(key: ValueKey(state.selectedTab), index: state.selectedTab, children: const [HomeTab(), PricesTab(), ChatTab(), FavoritesTab(), ProfileTab()]),
+      ),
       bottomNavigationBar: _FloatingNav(index: state.selectedTab, onChanged: (i) => state.setTab(i)),
     );
   }
@@ -372,20 +322,20 @@ class _FloatingNav extends StatelessWidget {
     final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t;
     final items = [
       (Icons.home_outlined, Icons.home_rounded, t('home')),
-      (Icons.show_chart_outlined, Icons.show_chart_rounded, t('prices')),
+      (Icons.bar_chart_outlined, Icons.bar_chart_rounded, t('prices')),
       (Icons.forum_outlined, Icons.forum_rounded, t('chat')),
-      (Icons.favorite_border_rounded, Icons.favorite_rounded, t('favs')),
-      (Icons.person_outline_rounded, Icons.person_rounded, t('settings')),
+      (Icons.star_border_rounded, Icons.star_rounded, t('favs')),
+      (Icons.person_outline_rounded, Icons.person_rounded, t('profile')),
     ];
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16), height: 72,
-      decoration: BoxDecoration(color: isDark ? const Color(0xFF11111A).withOpacity(0.85) : Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(25), border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05), width: 1.5), boxShadow: [BoxShadow(color: C.primaryPurple.withOpacity(0.15), blurRadius: 30, spreadRadius: 2)]),
+      decoration: BoxDecoration(color: isDark ? C.cardBg.withOpacity(0.9) : Colors.white, borderRadius: BorderRadius.circular(25), border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05), width: 1.5), boxShadow: [BoxShadow(color: C.primaryPurple.withOpacity(0.2), blurRadius: 30, spreadRadius: 2)]),
       child: ClipRRect(borderRadius: BorderRadius.circular(25), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), child: Row(children: List.generate(items.length, (i) {
         final sel = index == i; final (icon, active, label) = items[i];
         return Expanded(child: TapScale(onTap: () => onChanged(i), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(sel ? active : icon, color: sel ? C.primaryPurple : (isDark ? const Color(0xFFA0A0B0) : Colors.black54), size: 24),
+          Icon(sel ? active : icon, color: sel ? C.primaryPurple : (isDark ? Colors.white38 : Colors.black38), size: 26),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 10, color: sel ? C.primaryPurple : (isDark ? const Color(0xFFA0A0B0) : Colors.black54), fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
+          Text(label, style: TextStyle(fontSize: 10, color: sel ? C.primaryPurple : (isDark ? Colors.white38 : Colors.black38), fontWeight: sel ? FontWeight.w800 : FontWeight.w500)),
         ])));
       })))),
     );
@@ -393,51 +343,43 @@ class _FloatingNav extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  CORE WIDGETS
+//  CORE WIDGETS & ANIMATIONS
 // ═══════════════════════════════════════════════════════
 class TapScale extends StatefulWidget { final Widget child; final VoidCallback onTap; const TapScale({super.key, required this.child, required this.onTap}); @override State<TapScale> createState() => _TapScaleState(); }
 class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin {
   late AnimationController _c; late Animation<double> _s;
-  @override void initState() { super.initState(); _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100)); _s = Tween(begin: 1.0, end: 0.92).animate(CurvedAnimation(parent: _c, curve: Curves.easeOut)); }
+  @override void initState() { super.initState(); _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 150)); _s = Tween(begin: 1.0, end: 0.90).animate(CurvedAnimation(parent: _c, curve: Curves.easeOutBack)); }
   @override void dispose() { _c.dispose(); super.dispose(); }
   @override Widget build(BuildContext context) => GestureDetector(onTapDown: (_) => _c.forward(), onTapUp: (_) { _c.reverse(); widget.onTap(); }, onTapCancel: () => _c.reverse(), child: ScaleTransition(scale: _s, child: widget.child));
 }
 
-class StaggeredListItem extends StatelessWidget { final int index; final Widget child; const StaggeredListItem({super.key, required this.index, required this.child}); @override Widget build(BuildContext context) => TweenAnimationBuilder<double>(tween: Tween(begin: 0.0, end: 1.0), duration: Duration(milliseconds: 400 + (index * 50)), curve: Curves.easeOutCubic, builder: (context, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 20 * (1 - value)), child: child)), child: child); }
-
-class ShimmerSkeleton extends StatefulWidget { final double height; const ShimmerSkeleton({super.key, required this.height}); @override State<ShimmerSkeleton> createState() => _ShimmerSkeletonState(); }
-class _ShimmerSkeletonState extends State<ShimmerSkeleton> with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  @override void initState() { super.initState(); _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true); }
-  @override void dispose() { _c.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => AnimatedBuilder(animation: _c, builder: (context, child) => Container(height: widget.height, margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: Color.lerp(const Color(0xFF1C1C2A), const Color(0xFF2C2C3A), _c.value), borderRadius: BorderRadius.circular(20))));
+class StaggeredEntrance extends StatelessWidget {
+  final int index; final Widget child;
+  const StaggeredEntrance({super.key, required this.index, required this.child});
+  @override Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0.0, end: 1.0), duration: Duration(milliseconds: 500 + (index * 80)), curve: Curves.easeOutExpo,
+    builder: (context, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 40 * (1 - value)), child: child)),
+    child: child,
+  );
 }
 
 class GlassCard extends StatelessWidget {
-  final Widget child; final EdgeInsets padding;
-  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16)});
+  final Widget child; final EdgeInsets padding; final Gradient? gradient;
+  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.gradient});
   @override Widget build(BuildContext context) {
     final isDark = context.watch<AppState>().isDarkMode;
-    return Container(padding: padding, decoration: BoxDecoration(color: isDark ? const Color(0xFF1C1C2A).withOpacity(0.4) : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)), boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]), child: child);
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: gradient == null ? (isDark ? C.cardBg.withOpacity(0.6) : Colors.white) : null,
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05), width: 1.5),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: child,
+    );
   }
-}
-
-class Sparkline extends StatelessWidget {
-  final List<double> data; final Color color;
-  const Sparkline({super.key, required this.data, required this.color});
-  @override Widget build(BuildContext context) => SizedBox(width: 70, height: 30, child: CustomPaint(painter: _SparkPainter(data, color)));
-}
-class _SparkPainter extends CustomPainter {
-  final List<double> data; final Color color; _SparkPainter(this.data, this.color);
-  @override void paint(Canvas canvas, Size size) {
-    if (data.length < 2) return; final minV = data.reduce(min).toDouble(); final maxV = data.reduce(max).toDouble(); final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
-    final path = Path(); final fillPath = Path()..moveTo(0, size.height);
-    for (int i = 0; i < data.length; i++) { final x = (i / (data.length - 1)) * size.width; final y = size.height - ((data[i] - minV) / range) * size.height; if (i == 0) path.moveTo(x, y); else path.lineTo(x, y); fillPath.lineTo(x, y); }
-    fillPath..lineTo(size.width, size.height)..close();
-    canvas.drawPath(fillPath, Paint()..shader = LinearGradient(colors: [color.withOpacity(0.3), color.withOpacity(0)], begin: Alignment.topCenter, end: Alignment.bottomCenter).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
-    canvas.drawPath(path, Paint()..color = color..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
-  }
-  @override bool shouldRepaint(covariant _SparkPainter old) => false;
 }
 
 class AssetIcon extends StatelessWidget {
@@ -452,9 +394,17 @@ class AssetIcon extends StatelessWidget {
     else if (asset.code == 'COIN_EMAMI_RLS') { iconWidget = Icon(Icons.monetization_on_rounded, color: C.gold, size: size * 0.6); }
     else if (asset.symbol == 'BTC') { iconWidget = Icon(Icons.currency_bitcoin_rounded, color: Colors.orange, size: size * 0.6); }
     else { iconWidget = _fallbackIcon(); }
-    return Hero(tag: 'icon_${asset.code}', child: Container(width: size, height: size, decoration: BoxDecoration(color: const Color(0xFF1C1C2A), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withOpacity(0.05), width: 1)), alignment: Alignment.center, child: iconWidget));
+    return Hero(tag: 'icon_${asset.code}', child: Container(width: size, height: size, decoration: BoxDecoration(color: C.cardBg, borderRadius: BorderRadius.circular(size * 0.3), border: Border.all(color: Colors.white.withOpacity(0.1), width: 1)), alignment: Alignment.center, child: iconWidget));
   }
   Widget _fallbackIcon() => Text(asset.icon, style: TextStyle(fontSize: size * 0.5));
+}
+
+class ShimmerCard extends StatefulWidget { final double height; const ShimmerCard({super.key, required this.height}); @override State<ShimmerCard> createState() => _ShimmerCardState(); }
+class _ShimmerCardState extends State<ShimmerCard> with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  @override void initState() { super.initState(); _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true); }
+  @override void dispose() { _c.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) => AnimatedBuilder(animation: _c, builder: (context, child) => Container(height: widget.height, margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: Color.lerp(C.cardBg, C.primaryPurple.withOpacity(0.1), _c.value), borderRadius: BorderRadius.circular(24))));
 }
 
 // ═══════════════════════════════════════════════════════
@@ -463,62 +413,62 @@ class AssetIcon extends StatelessWidget {
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t; final textColor = isDark ? Colors.white : Colors.black;
+    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t;
     return SafeArea(bottom: false, child: RefreshIndicator(
-      color: C.primaryPurple, backgroundColor: isDark ? const Color(0xFF11111A) : Colors.white, onRefresh: state.refresh,
+      color: C.primaryPurple, backgroundColor: C.cardBg, onRefresh: state.refresh,
       child: ListView(padding: const EdgeInsets.fromLTRB(20, 10, 20, 100), children: [
-        Row(children: [TapScale(onTap: () => _showNotif(context, state), child: GlassCard(padding: const EdgeInsets.all(10), child: Icon(Icons.notifications_none_rounded, color: textColor))), const Spacer(), Column(children: [RichText(text: TextSpan(children: [TextSpan(text: 'Ping ', style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.w800)), const TextSpan(text: 'Market', style: TextStyle(color: C.primaryPurple, fontSize: 20, fontWeight: FontWeight.w800))])), Text('Real-time Prices', style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 10))]), const Spacer(), TapScale(onTap: state.toggleLang, child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), child: Text(state.lang == 'fa' ? 'فا' : 'EN', style: TextStyle(color: textColor, fontWeight: FontWeight.bold))))]),
-        const SizedBox(height: 24),
-        if (!state.loading && state.featuredAsset != null) TapScale(onTap: () => _showFeaturedSelector(context, state), child: _buildFeaturedCard(state, state.featuredAsset!)) else if (state.loading) const ShimmerSkeleton(height: 160) else _buildErrorCard(context, state),
-        const SizedBox(height: 20),
-        TapScale(onTap: () { state.setTab(1); Future.delayed(const Duration(milliseconds: 300), () { state.searchFocusNode.requestFocus(); }); }, child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), child: Row(children: [Icon(Icons.search_rounded, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54), const SizedBox(width: 10), Expanded(child: Text(t('searchHint'), style: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38))), Icon(Icons.tune_rounded, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)]))),
-        const SizedBox(height: 24),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [_quickAction(context, state, 'GOLD_18_RLS', 'طلا', Icons.diamond_rounded, C.gold), _quickAction(context, state, 'USD_RLS', 'دلار', Icons.attach_money_rounded, C.green), _quickAction(context, state, 'CG_BTC', 'بیت‌کوین', Icons.currency_bitcoin_rounded, Colors.orange), _allMarketsAction(context, state, 'همه بازارها', Icons.grid_view_rounded, Colors.blueAccent)]),
-        const SizedBox(height: 24),
-        if (state.loading) ...List.generate(3, (_) => const ShimmerSkeleton(height: 80)) else if (state.error != null && state.all.isEmpty) Center(child: Padding(padding: const EdgeInsets.all(32), child: Column(children: [const Icon(Icons.wifi_off_rounded, color: C.red, size: 48), const SizedBox(height: 16), Text(state.error!, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54), textAlign: TextAlign.center), const SizedBox(height: 16), ElevatedButton(onPressed: state.refresh, style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple), child: Text(t('retry')))]))) else if (state.all.isNotEmpty) ...state.all.take(4).toList().asMap().entries.map((e) => StaggeredListItem(index: e.key, child: _homePriceRow(context, state, e.value))),
+        StaggeredEntrance(index: 0, child: Row(children: [
+          GlassCard(padding: const EdgeInsets.all(10), child: const Icon(Icons.notifications_none_rounded, color: Colors.white)),
+          const Spacer(),
+          Column(children: [
+            RichText(text: TextSpan(children: [TextSpan(text: 'Ping ', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.w900)), const TextSpan(text: 'Market', style: TextStyle(color: C.primaryPurple, fontSize: 24, fontWeight: FontWeight.w900))])),
+            Text('Real-time Prices', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 10, letterSpacing: 2)),
+          ]),
+          const Spacer(),
+          TapScale(onTap: state.toggleLang, child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), child: Text(state.lang == 'fa' ? 'FA' : 'EN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
+        ])),
+        const SizedBox(height: 30),
+        StaggeredEntrance(index: 1, child: _buildFeaturedCard(state, state.featuredAsset ?? MarketAsset(code: 'USD', symbol: 'USD', labelFa: 'دلار', labelEn: 'Dollar', icon: '💵', isCrypto: false, change: 0, sparkline: []))),
+        const SizedBox(height: 30),
+        StaggeredEntrance(index: 2, child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          _quickAction(context, state, 'GOLD_18_RLS', 'طلا', Icons.diamond_rounded, C.gold),
+          _quickAction(context, state, 'USD_RLS', 'دلار', Icons.attach_money_rounded, C.green),
+          _quickAction(context, state, 'CG_BTC', 'بیت‌کوین', Icons.currency_bitcoin_rounded, Colors.orange),
+          _allMarketsAction(context, state, 'بازارها', Icons.grid_view_rounded, C.primaryCyan),
+        ])),
+        const SizedBox(height: 30),
+        StaggeredEntrance(index: 3, child: Text('Top Assets', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
+        const SizedBox(height: 16),
+        if (state.loading) ...List.generate(3, (_) => const ShimmerCard(height: 80)) 
+        else if (state.all.isNotEmpty) ...state.all.take(5).toList().asMap().entries.map((e) => StaggeredEntrance(index: e.key + 4, child: _homePriceRow(context, state, e.value))),
       ]),
     ));
   }
 
   Widget _buildFeaturedCard(AppState state, MarketAsset asset) {
     final isUp = asset.change >= 0; final changeColor = isUp ? C.green : C.red;
-    return Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4A148C), Color(0xFF1A237E)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: C.primaryPurple.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))]),
+    return GlassCard(
+      padding: const EdgeInsets.all(24), gradient: const LinearGradient(colors: [Color(0xFF3A0CA3), Color(0xFF7209B7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
       child: Stack(children: [
-        Positioned(right: -20, bottom: -20, child: Icon(Icons.show_chart_rounded, size: 120, color: Colors.white.withOpacity(0.05))),
+        Positioned(right: -20, bottom: -20, child: Icon(Icons.show_chart_rounded, size: 140, color: Colors.white.withOpacity(0.1))),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [AssetIcon(asset: asset, size: 40), const SizedBox(width: 12), Text(asset.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)), const Spacer(), const Icon(Icons.touch_app_rounded, color: Colors.white54, size: 20)]),
-          const SizedBox(height: 24), Text(asset.displayPrice, style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1)), const SizedBox(height: 8),
-          Row(children: [Icon(isUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: changeColor, size: 16), const SizedBox(width: 4), Text(asset.changeText, style: TextStyle(color: changeColor, fontSize: 14, fontWeight: FontWeight.bold))]),
+          Row(children: [AssetIcon(asset: asset, size: 50), const SizedBox(width: 16), Text(asset.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const Spacer(), const Icon(Icons.touch_app_rounded, color: Colors.white54, size: 24)]),
+          const SizedBox(height: 30), Text(asset.displayPrice, style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: -1)), const SizedBox(height: 12),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(isUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: changeColor, size: 16), const SizedBox(width: 6), Text(asset.changeText, style: TextStyle(color: changeColor, fontSize: 14, fontWeight: FontWeight.bold))])),
         ]),
       ]),
     );
   }
 
-  void _showFeaturedSelector(BuildContext context, AppState state) {
-    showModalBottomSheet(context: context, backgroundColor: state.isDarkMode ? const Color(0xFF11111A) : Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))), builder: (ctx) {
-      return SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Padding(padding: const EdgeInsets.all(20), child: Text(state.t('selectFeatured'), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold))),
-        Flexible(child: ListView.builder(shrinkWrap: true, itemCount: state.all.length, itemBuilder: (_, i) { final a = state.all[i]; return ListTile(leading: AssetIcon(asset: a, size: 40), title: Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black)), onTap: () { state.setFeatured(a.code); Navigator.pop(ctx); }); })),
-      ]));
-    });
-  }
-
-  Widget _quickAction(BuildContext context, AppState state, String code, String label, IconData fallbackIcon, Color color) {
-    final asset = state.byCode(code) ?? state.byCode('CG_${code.replaceAll('CG_', '')}');
-    return TapScale(onTap: () { if (asset != null) Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: asset))); else { state.setPricesFilter(0); state.setTab(1); } }, child: GlassCard(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), child: Column(children: [if (asset != null) AssetIcon(asset: asset, size: 32) else Icon(fallbackIcon, color: color, size: 30), const SizedBox(height: 8), Text(label, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 11))])));
+  Widget _quickAction(BuildContext context, AppState state, String code, String label, IconData icon, Color color) {
+    return TapScale(onTap: () { if (state.byCode(code) != null) Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: state.byCode(code)!))); else { state.setTab(1); } }, child: GlassCard(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), child: Column(children: [Icon(icon, color: color, size: 32), const SizedBox(height: 8), Text(label, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 11, fontWeight: FontWeight.bold))])));
   }
   Widget _allMarketsAction(BuildContext context, AppState state, String label, IconData icon, Color color) {
-    return TapScale(onTap: () { state.setPricesFilter(0); state.setTab(1); }, child: GlassCard(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), child: Column(children: [Icon(icon, color: color, size: 30), const SizedBox(height: 8), Text(label, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 11))])));
+    return TapScale(onTap: () { state.setTab(1); }, child: GlassCard(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), child: Column(children: [Icon(icon, color: color, size: 32), const SizedBox(height: 8), Text(label, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 11, fontWeight: FontWeight.bold))])));
   }
   Widget _homePriceRow(BuildContext context, AppState state, MarketAsset a) {
     final isUp = a.change >= 0;
-    return TapScale(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))), child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.all(14), child: Row(children: [AssetIcon(asset: a, size: 46), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontWeight: FontWeight.w600)), const SizedBox(height: 4), Text(a.displayPrice, style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13))])), Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Sparkline(data: a.sparkline, color: isUp ? C.green : C.red)]), const SizedBox(width: 8), Icon(Icons.chevron_right_rounded, color: state.isDarkMode ? const Color(0xFF606070) : Colors.black38)]))));
-  }
-  Widget _buildErrorCard(BuildContext context, AppState state) {
-    return Center(child: Padding(padding: const EdgeInsets.all(32), child: Column(children: [const Icon(Icons.wifi_off_rounded, color: C.red, size: 48), const SizedBox(height: 16), Text(state.error ?? 'Error', style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54), textAlign: TextAlign.center), const SizedBox(height: 16), ElevatedButton(onPressed: state.refresh, style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple), child: Text(state.t('retry')))])));
-  }
-  void _showNotif(BuildContext context, AppState state) {
-    showModalBottomSheet(context: context, backgroundColor: state.isDarkMode ? const Color(0xFF11111A) : Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))), builder: (_) => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.notifications_none_rounded, color: C.primaryPurple, size: 40), const SizedBox(height: 16), Text(state.t('notifications'), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text(state.t('noNotif'), style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54))])));
+    return TapScale(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))), child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.all(16), child: Row(children: [AssetIcon(asset: a, size: 46), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 6), Text(a.displayPrice, style: TextStyle(color: state.isDarkMode ? Colors.white54 : Colors.black54, fontSize: 14, fontWeight: FontWeight.w500))])), Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold))]))));
   }
 }
 
@@ -529,97 +479,89 @@ class PricesTab extends StatefulWidget { const PricesTab({super.key}); @override
 class _PricesTabState extends State<PricesTab> {
   String _query = '';
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t; final textColor = isDark ? Colors.white : Colors.black;
+    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t;
     List<MarketAsset> list = state.all; if (state.pricesFilter == 1) list = state.iran; if (state.pricesFilter == 2) list = state.crypto;
     if (_query.isNotEmpty) { list = list.where((a) => a.displayLabelFor(state.lang).toLowerCase().contains(_query.toLowerCase())).toList(); }
     return SafeArea(bottom: false, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Row(children: [const Icon(Icons.bar_chart_rounded, color: C.primaryCyan, size: 28), const SizedBox(width: 10), Text(t('prices'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold))])),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: TextField(focusNode: state.searchFocusNode, onChanged: (v) => setState(() => _query = v), style: TextStyle(color: textColor), decoration: InputDecoration(hintText: t('searchHint'), hintStyle: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38), border: InputBorder.none, icon: Icon(Icons.search_rounded, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54))))),
-      const SizedBox(height: 12),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [_filterPill(state, t('all'), 0), _filterPill(state, t('currency'), 1), _filterPill(state, t('crypto'), 2)])),
+      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Row(children: [const Icon(Icons.bar_chart_rounded, color: C.primaryCyan, size: 32), const SizedBox(width: 12), Text(t('prices'), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 26, fontWeight: FontWeight.w900))])),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: TextField(focusNode: state.searchFocusNode, onChanged: (v) => setState(() => _query = v), style: TextStyle(color: isDark ? Colors.white : Colors.black), decoration: InputDecoration(hintText: t('searchHint'), hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38), border: InputBorder.none, icon: Icon(Icons.search_rounded, color: isDark ? Colors.white54 : Colors.black54))))),
       const SizedBox(height: 16),
-      Expanded(child: RefreshIndicator(color: C.primaryPurple, backgroundColor: isDark ? const Color(0xFF11111A) : Colors.white, onRefresh: state.refresh, child: state.loading ? ListView(padding: const EdgeInsets.symmetric(horizontal: 20), children: const [ShimmerSkeleton(height: 80), ShimmerSkeleton(height: 80), ShimmerSkeleton(height: 80)]) : list.isEmpty ? Center(child: Text(t('noResults'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54))) : ListView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 100), children: list.asMap().entries.map((e) => StaggeredListItem(index: e.key > 10 ? 10 : e.key, child: _priceRow(context, state, e.value))).toList()))),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [_filterPill(state, t('all'), 0), _filterPill(state, t('iran'), 1), _filterPill(state, t('crypto'), 2)])),
+      const SizedBox(height: 16),
+      Expanded(child: state.loading ? ListView(padding: const EdgeInsets.symmetric(horizontal: 20), children: const [ShimmerCard(height: 80), ShimmerCard(height: 80), ShimmerCard(height: 80)]) : list.isEmpty ? Center(child: Text(t('noResults'), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54))) : ListView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 100), children: list.asMap().entries.map((e) => StaggeredEntrance(index: e.key > 10 ? 10 : e.key, child: _priceRow(context, state, e.value))).toList())),
     ]));
   }
   Widget _priceRow(BuildContext context, AppState state, MarketAsset a) {
     final isUp = a.change >= 0;
-    return TapScale(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))), child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.all(14), child: Row(children: [AssetIcon(asset: a, size: 46), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontWeight: FontWeight.w600)), const SizedBox(height: 4), Text(a.displayPrice, style: TextStyle(color: state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13))])), Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Sparkline(data: a.sparkline, color: isUp ? C.green : C.red)]), const SizedBox(width: 8), Icon(Icons.chevron_right_rounded, color: state.isDarkMode ? const Color(0xFF606070) : Colors.black38)]))));
+    return TapScale(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: a))), child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.all(16), child: Row(children: [AssetIcon(asset: a, size: 46), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.displayLabelFor(state.lang), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 6), Text(a.displayPrice, style: TextStyle(color: state.isDarkMode ? Colors.white54 : Colors.black54, fontSize: 14, fontWeight: FontWeight.w500))])), Text(a.changeText, style: TextStyle(color: isUp ? C.green : C.red, fontWeight: FontWeight.bold))]))));
   }
   Widget _filterPill(AppState state, String label, int idx) {
     final sel = state.pricesFilter == idx;
-    return TapScale(onTap: () => state.setPricesFilter(idx), child: Container(margin: const EdgeInsets.only(left: 10), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10), decoration: BoxDecoration(gradient: sel ? const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]) : null, color: sel ? null : (state.isDarkMode ? const Color(0xFF1C1C2A) : Colors.white), borderRadius: BorderRadius.circular(20), border: sel ? null : Border.all(color: state.isDarkMode ? Colors.white10 : Colors.black12)), child: Text(label, style: TextStyle(color: sel ? Colors.white : (state.isDarkMode ? const Color(0xFFA0A0B0) : Colors.black54), fontWeight: FontWeight.bold))));
+    return TapScale(onTap: () => state.setPricesFilter(idx), child: Container(margin: const EdgeInsets.only(left: 12), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), decoration: BoxDecoration(gradient: sel ? const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]) : null, color: sel ? null : C.cardBg, borderRadius: BorderRadius.circular(16)), child: Text(label, style: TextStyle(color: sel ? Colors.white : Colors.white54, fontWeight: FontWeight.bold))));
   }
 }
 
 // ═══════════════════════════════════════════════════════
-//  TAB 3: CHAT ROOM
+//  TAB 3: CHAT ROOM (LUXURY DESIGN)
 // ═══════════════════════════════════════════════════════
 class ChatTab extends StatefulWidget { const ChatTab({super.key}); @override State<ChatTab> createState() => _ChatTabState(); }
 class _ChatTabState extends State<ChatTab> {
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
-  Timer? _pollingTimer;
+  Timer? _timer;
 
-  @override void initState() {
-    super.initState();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (_) => _fetchMessages());
-    _fetchMessages();
-  }
-  @override void dispose() { _pollingTimer?.cancel(); _msgCtrl.dispose(); _scrollCtrl.dispose(); super.dispose(); }
+  @override void initState() { super.initState(); _timer = Timer.periodic(const Duration(seconds: 2), (_) => _fetch()); _fetch(); }
+  @override void dispose() { _timer?.cancel(); _msgCtrl.dispose(); _scrollCtrl.dispose(); super.dispose(); }
 
-  void _fetchMessages() async {
-    if (!mounted) return;
-    await context.read<AppState>().fetchChatMessages();
-  }
+  void _fetch() async { if (mounted) await context.read<AppState>().fetchChatMessages(); }
+  void _scroll() { WidgetsBinding.instance.addPostFrameCallback((_) { if (_scrollCtrl.hasClients) _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic); }); }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-      }
-    });
+  void _send() {
+    final text = _msgCtrl.text.trim();
+    if (text.isEmpty) return;
+    _msgCtrl.clear();
+    context.read<AppState>().sendChatMessage(text);
+    _scroll();
   }
 
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t; final textColor = isDark ? Colors.white : Colors.black;
-
-    if (state.chatMessages.isNotEmpty) _scrollToBottom();
+    final state = context.watch<AppState>(); final t = state.t;
+    if (state.chatMessages.isNotEmpty) _scroll();
 
     return SafeArea(bottom: false, child: Column(children: [
-      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Row(children: [const Icon(Icons.forum_rounded, color: C.primaryCyan, size: 28), const SizedBox(width: 10), Text(t('chat'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold))])),
+      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Row(children: [const Icon(Icons.forum_rounded, color: C.primaryCyan, size: 32), const SizedBox(width: 12), Text(t('chat'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900))])),
       
-      Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 20), decoration: BoxDecoration(color: isDark ? const Color(0xFF11111A).withOpacity(0.6) : Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black12)), child: ClipRRect(borderRadius: BorderRadius.circular(24), child: ListView.builder(
-        controller: _scrollCtrl, padding: const EdgeInsets.all(16), itemCount: state.chatMessages.length,
+      Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 20), decoration: BoxDecoration(color: C.cardBg.withOpacity(0.5), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white.withOpacity(0.05))), child: ClipRRect(borderRadius: BorderRadius.circular(30), child: ListView.builder(
+        controller: _scrollCtrl, padding: const EdgeInsets.all(20), itemCount: state.chatMessages.length,
         itemBuilder: (context, index) {
           final msg = state.chatMessages[index];
           final isMe = msg.username == state.username;
-          return _buildMessageBubble(msg, isMe, isDark);
+          return _bubble(msg, isMe, index);
         },
       )))),
 
       Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 100), child: state.token == null 
         ? Center(child: TextButton.icon(onPressed: () => state.setTab(4), icon: const Icon(Icons.login_rounded, color: C.primaryPurple), label: Text(t('loginToChat'), style: const TextStyle(color: C.primaryPurple, fontWeight: FontWeight.bold))))
-        : Container(decoration: BoxDecoration(color: isDark ? const Color(0xFF1C1C2A) : Colors.white, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]), child: Row(children: [
-            Expanded(child: TextField(controller: _msgCtrl, style: TextStyle(color: textColor), decoration: InputDecoration(hintText: t('typeMessage'), hintStyle: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)), onSubmitted: (_) { final txt = _msgCtrl.text.trim(); if(txt.isNotEmpty) { _msgCtrl.clear(); state.sendChatMessage(txt); _scrollToBottom(); } })),
-            TapScale(onTap: () { final txt = _msgCtrl.text.trim(); if(txt.isNotEmpty) { _msgCtrl.clear(); state.sendChatMessage(txt); _scrollToBottom(); } }, child: Container(margin: const EdgeInsets.all(6), padding: const EdgeInsets.all(12), decoration: const BoxDecoration(gradient: LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), shape: BoxShape.circle), child: const Icon(Icons.send_rounded, color: Colors.white, size: 20))),
+        : GlassCard(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Row(children: [
+            Expanded(child: TextField(controller: _msgCtrl, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: t('typeMessage'), hintStyle: const TextStyle(color: Colors.white38), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16)), onSubmitted: (_) => _send())),
+            TapScale(onTap: _send, child: Container(padding: const EdgeInsets.all(14), decoration: const BoxDecoration(gradient: LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), shape: BoxShape.circle), child: const Icon(Icons.send_rounded, color: Colors.white, size: 22))),
           ])),
       ),
     ]));
   }
 
-  Widget _buildMessageBubble(ChatMessage msg, bool isMe, bool isDark) {
+  Widget _bubble(ChatMessage msg, bool isMe, int index) {
     if (msg.isSystem) {
-      return Center(child: Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: C.gold.withOpacity(0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: C.gold.withOpacity(0.3))), child: Text(msg.text, style: const TextStyle(color: C.gold, fontSize: 12, fontWeight: FontWeight.bold))));
+      return StaggeredEntrance(index: index, child: Center(child: Container(margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: C.gold.withOpacity(0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: C.gold.withOpacity(0.3))), child: Text(msg.text, style: const TextStyle(color: C.gold, fontSize: 13, fontWeight: FontWeight.bold)))));
     }
-    return Align(alignment: isMe ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd, child: Container(
-      margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-      decoration: BoxDecoration(gradient: isMe ? const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]) : null, color: isMe ? null : (isDark ? const Color(0xFF2C2C3A) : const Color(0xFFF0F0F5)), borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(isMe ? 16 : 4), bottomRight: Radius.circular(isMe ? 4 : 16))),
+    return StaggeredEntrance(index: index, child: Align(alignment: isMe ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd, child: Container(
+      margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+      decoration: BoxDecoration(gradient: isMe ? const LinearGradient(colors: [C.primaryPurple, Color(0xFF5A189A)]) : null, color: isMe ? null : C.bg, borderRadius: BorderRadius.only(topLeft: const Radius.circular(24), topRight: const Radius.circular(24), bottomLeft: Radius.circular(isMe ? 24 : 4), bottomRight: Radius.circular(isMe ? 4 : 24)), boxShadow: [BoxShadow(color: isMe ? C.primaryPurple.withOpacity(0.3) : Colors.transparent, blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end, children: [
-        if (!isMe) Text(msg.username, style: const TextStyle(color: C.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold)),
-        if (!isMe) const SizedBox(height: 4),
-        Text(msg.text, style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : Colors.black87), fontSize: 14)),
+        if (!isMe) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(msg.username, style: const TextStyle(color: C.primaryCyan, fontSize: 12, fontWeight: FontWeight.bold))),
+        Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
       ]),
-    ));
+    )));
   }
 }
 
@@ -629,105 +571,85 @@ class _ChatTabState extends State<ChatTab> {
 class FavoritesTab extends StatelessWidget {
   const FavoritesTab({super.key});
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t; final textColor = isDark ? Colors.white : Colors.black;
+    final state = context.watch<AppState>(); final t = state.t;
     return SafeArea(bottom: false, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Row(children: [const Icon(Icons.star_rounded, color: C.primaryCyan, size: 28), const SizedBox(width: 10), Text(t('favs'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold))])),
-      Expanded(child: state.favList.isEmpty ? Center(child: Text(t('noFavs'), style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54))) : ListView(padding: const EdgeInsets.fromLTRB(20, 10, 20, 100), children: state.favList.asMap().entries.map((e) => StaggeredListItem(index: e.key, child: TapScale(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: e.value))), child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.all(14), child: Row(children: [AssetIcon(asset: e.value, size: 46), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(e.value.displayLabelFor(state.lang), style: TextStyle(color: textColor, fontWeight: FontWeight.w600)), const SizedBox(height: 4), Text(e.value.displayPrice, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 13))])), TapScale(onTap: () => state.toggleFav(e.value.code), child: const Padding(padding: EdgeInsets.all(4.0), child: Icon(Icons.delete_outline_rounded, color: C.red)))])))))).toList())),
+      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Row(children: [const Icon(Icons.star_rounded, color: C.primaryCyan, size: 32), const SizedBox(width: 12), Text(t('favs'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900))])),
+      Expanded(child: state.favList.isEmpty ? Center(child: Text(t('noFavs'), style: const TextStyle(color: Colors.white54))) : ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 100), children: state.favList.asMap().entries.map((e) => StaggeredEntrance(index: e.key, child: TapScale(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(asset: e.value))), child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.all(16), child: Row(children: [AssetIcon(asset: e.value, size: 46), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(e.value.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 6), Text(e.value.displayPrice, style: const TextStyle(color: Colors.white54, fontSize: 14, fontWeight: FontWeight.w500))])), TapScale(onTap: () => state.toggleFav(e.value.code), child: const Padding(padding: EdgeInsets.all(8.0), child: Icon(Icons.delete_outline_rounded, color: C.red)))])))))).toList())),
     ]));
   }
 }
 
 // ═══════════════════════════════════════════════════════
-//  TAB 5: PROFILE & AUTH
+//  TAB 5: PROFILE & AUTH (LUXURY DESIGN)
 // ═══════════════════════════════════════════════════════
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t; final textColor = isDark ? Colors.white : Colors.black;
+    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t;
     return SafeArea(bottom: false, child: ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 100), children: [
-      Row(children: [const Icon(Icons.person_rounded, color: C.primaryCyan, size: 28), const SizedBox(width: 10), Text(t('settings'), style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold))]),
+      StaggeredEntrance(index: 0, child: Row(children: [const Icon(Icons.person_rounded, color: C.primaryCyan, size: 32), const SizedBox(width: 12), Text(t('profile'), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 26, fontWeight: FontWeight.w900))])),
       const SizedBox(height: 30),
       
-      if (state.token == null) const AuthForm() else _buildProfileCard(context, state, isDark, textColor),
+      if (state.token == null) const AuthForm() else _buildProfileCard(context, state, isDark),
       
-      const SizedBox(height: 24),
-      _settingItem(context, state, Icons.wb_sunny_rounded, t('darkMode'), trailing: Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, color: C.primaryPurple), onTap: state.toggleTheme),
-      _settingItem(context, state, Icons.language_rounded, t('language'), trailing: Text(state.lang == 'fa' ? 'فارسی' : 'English', style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54)), onTap: state.toggleLang),
+      const SizedBox(height: 30),
+      StaggeredEntrance(index: 1, child: _settingItem(context, state, Icons.wb_sunny_rounded, t('darkMode'), trailing: Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, color: C.primaryPurple), onTap: state.toggleTheme)),
+      StaggeredEntrance(index: 2, child: _settingItem(context, state, Icons.language_rounded, t('language'), trailing: Text(state.lang == 'fa' ? 'فارسی' : 'English', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)), onTap: state.toggleLang)),
       
       if (state.isAdmin) ...[
-        const SizedBox(height: 24),
-        Text(t('adminPanel'), style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        _settingItem(context, state, Icons.admin_panel_settings_rounded, t('adminPanel'), trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: C.primaryPurple), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen()))),
+        const SizedBox(height: 30),
+        StaggeredEntrance(index: 3, child: Text(t('adminPanel'), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
+        const SizedBox(height: 16),
+        StaggeredEntrance(index: 4, child: _settingItem(context, state, Icons.admin_panel_settings_rounded, t('adminPanel'), trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: C.primaryPurple), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen())))),
       ],
     ]));
   }
 
-  Widget _buildProfileCard(BuildContext context, AppState state, bool isDark, Color textColor) {
-    return GlassCard(padding: const EdgeInsets.all(20), child: Column(children: [
+  Widget _buildProfileCard(BuildContext context, AppState state, bool isDark) {
+    return StaggeredEntrance(index: 1, child: GlassCard(padding: const EdgeInsets.all(24), child: Column(children: [
       Row(children: [
-        Container(width: 60, height: 60, decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(colors: [C.primaryPurple, C.primaryCyan])), alignment: Alignment.center, child: Text(state.avatar ?? '👤', style: const TextStyle(fontSize: 30))),
-        const SizedBox(width: 16),
+        GestureDetector(
+          onTap: () => _showAvatarPicker(context, state),
+          child: Container(width: 70, height: 70, decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), boxShadow: [BoxShadow(color: C.primaryPurple.withOpacity(0.4), blurRadius: 20, spreadRadius: 2)]), alignment: Alignment.center, child: Text(state.avatar ?? '👤', style: const TextStyle(fontSize: 36))),
+        ),
+        const SizedBox(width: 20),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(state.username ?? '', style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
-          if (state.isAdmin) Text(state.t('admin'), style: const TextStyle(color: C.gold, fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4), Text(state.bio, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12)),
+          Text(state.username ?? '', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 22, fontWeight: FontWeight.w900)),
+          if (state.isAdmin) Container(margin: const EdgeInsets.only(top: 4), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: C.gold.withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: Text(state.t('admin'), style: const TextStyle(color: C.gold, fontSize: 12, fontWeight: FontWeight.bold))),
         ])),
-        TapScale(onTap: state.logout, child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: C.red.withOpacity(0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.logout_rounded, color: C.red, size: 20))),
+        TapScale(onTap: state.logout, child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: C.red.withOpacity(0.1), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.logout_rounded, color: C.red, size: 22))),
       ]),
-      const SizedBox(height: 16),
-      Divider(color: isDark ? Colors.white12 : Colors.black12),
-      const SizedBox(height: 12),
+      const SizedBox(height: 24),
       Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-        _statItem(context, '⭐', '${state.favList.length}', 'علاقه‌مندی‌ها'),
-        _statItem(context, '💬', '${state.chatMessages.where((m) => m.username == state.username).length}', 'پیام‌ها'),
+        _statItem(context, Icons.star_rounded, '${state.favList.length}', 'علاقه‌مندی'),
+        Container(width: 1, height: 40, color: Colors.white12),
+        _statItem(context, Icons.forum_rounded, '${state.chatMessages.where((m) => m.username == state.username).length}', 'پیام‌ها'),
       ]),
-      const SizedBox(height: 16),
-      TapScale(onTap: () => _showEditProfile(context, state), child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(border: Border.all(color: C.primaryPurple), borderRadius: BorderRadius.circular(12)), alignment: Alignment.center,
-        child: Text(state.t('editProfile'), style: const TextStyle(color: C.primaryPurple, fontWeight: FontWeight.bold)),
-      )),
-    ]));
+    ])));
   }
 
-  Widget _statItem(BuildContext context, String icon, String value, String label) {
+  Widget _statItem(BuildContext context, IconData icon, String value, String label) {
     final isDark = context.watch<AppState>().isDarkMode;
-    return Column(children: [Text(icon, style: const TextStyle(fontSize: 20)), const SizedBox(height: 4), Text(value, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)), Text(label, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 11))]);
+    return Column(children: [Icon(icon, color: C.primaryCyan, size: 24), const SizedBox(height: 8), Text(value, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)), Text(label, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12))]);
   }
 
-  void _showEditProfile(BuildContext context, AppState state) {
-    final TextEditingController bioCtrl = TextEditingController(text: state.bio);
-    String selectedAvatar = state.avatar ?? '👤';
+  void _showAvatarPicker(BuildContext context, AppState state) {
     final avatars = ['👤', '😎', '🦊', '🐱', '🐼', '🦁', '💼', '🚀', '🧠', '🔥'];
-
-    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: state.isDarkMode ? const Color(0xFF1C1C2A) : Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))), builder: (ctx) {
-      return StatefulBuilder(builder: (context, setSheet) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(state.t('editProfile'), style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 20),
-        Wrap(spacing: 10, runSpacing: 10, children: avatars.map((e) => GestureDetector(
-          onTap: () => setSheet(() => selectedAvatar = e),
-          child: Container(width: 50, height: 50, decoration: BoxDecoration(shape: BoxShape.circle, color: selectedAvatar == e ? C.primaryPurple : (state.isDarkMode ? Colors.white10 : Colors.black12)), alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 24))),
+    showModalBottomSheet(context: context, backgroundColor: C.cardBg, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))), builder: (ctx) {
+      return Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(state.t('editProfile'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 24),
+        Wrap(spacing: 16, runSpacing: 16, children: avatars.map((e) => GestureDetector(
+          onTap: () { state.updateAvatar(e); Navigator.pop(ctx); },
+          child: Container(width: 60, height: 60, decoration: BoxDecoration(shape: BoxShape.circle, color: C.bg, border: Border.all(color: state.avatar == e ? C.primaryCyan : Colors.transparent, width: 2)), alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 30))),
         )).toList()),
-        const SizedBox(height: 20),
-        TextField(controller: bioCtrl, style: TextStyle(color: state.isDarkMode ? Colors.white : Colors.black), maxLines: 2, decoration: InputDecoration(hintText: state.t('bio'), hintStyle: TextStyle(color: state.isDarkMode ? Colors.white38 : Colors.black38), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
-        const SizedBox(height: 20),
-        Row(children: [
-          Expanded(child: TextButton(onPressed: () => Navigator.pop(ctx), child: Text(state.t('cancel'), style: const TextStyle(color: Colors.grey)))),
-          const SizedBox(width: 10),
-          Expanded(child: ElevatedButton(
-            onPressed: () { state.updateProfile(selectedAvatar, bioCtrl.text); Navigator.pop(ctx); },
-            style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: Text(state.t('save'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          )),
-        ]),
-        const SizedBox(height: 20),
-      ])));
+      ]));
     });
   }
 
   Widget _settingItem(BuildContext context, AppState state, IconData icon, String title, {Widget? trailing, required VoidCallback onTap}) {
     final isDark = state.isDarkMode;
-    return TapScale(onTap: onTap, child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), child: Row(children: [Icon(icon, color: isDark ? const Color(0xFFA0A0B0) : Colors.black54), const SizedBox(width: 16), Expanded(child: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600))), if (trailing != null) trailing, if (trailing == null) Icon(Icons.chevron_left_rounded, color: isDark ? const Color(0xFF606070) : Colors.black38)]))));
+    return TapScale(onTap: onTap, child: Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), child: Row(children: [Icon(icon, color: isDark ? Colors.white54 : Colors.black54), const SizedBox(width: 16), Expanded(child: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w700, fontSize: 15))), if (trailing != null) trailing, if (trailing == null) Icon(Icons.chevron_left_rounded, color: isDark ? Colors.white38 : Colors.black38)]))));
   }
 }
 
@@ -745,24 +667,24 @@ class _AuthFormState extends State<AuthForm> {
   }
 
   @override Widget build(BuildContext context) {
-    final isDark = context.watch<AppState>().isDarkMode; final textColor = isDark ? Colors.white : Colors.black; final t = context.read<AppState>().t;
-    return GlassCard(padding: const EdgeInsets.all(20), child: Column(children: [
-      Text(_isLogin ? t('loginTitle') : t('registerTitle'), style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 20),
-      TextField(controller: _userCtrl, style: TextStyle(color: textColor), decoration: InputDecoration(labelText: t('username'), labelStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.black26), borderRadius: BorderRadius.circular(12)), focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: C.primaryPurple), borderRadius: BorderRadius.circular(12)))),
-      const SizedBox(height: 12),
-      TextField(controller: _passCtrl, obscureText: true, style: TextStyle(color: textColor), decoration: InputDecoration(labelText: t('password'), labelStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.black26), borderRadius: BorderRadius.circular(12)), focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: C.primaryPurple), borderRadius: BorderRadius.circular(12)))),
-      if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: const TextStyle(color: C.red, fontSize: 12))),
-      const SizedBox(height: 20),
-      TapScale(onTap: _loading ? () {} : _submit, child: Container(padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(gradient: const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: _loading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(_isLogin ? t('login') : t('register'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
-      const SizedBox(height: 12),
+    final t = context.read<AppState>().t;
+    return StaggeredEntrance(index: 1, child: GlassCard(padding: const EdgeInsets.all(24), child: Column(children: [
+      Text(_isLogin ? t('loginTitle') : t('registerTitle'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 24),
+      TextField(controller: _userCtrl, style: const TextStyle(color: Colors.white), decoration: InputDecoration(labelText: t('username'), labelStyle: const TextStyle(color: Colors.white54), enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(16)), focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: C.primaryPurple), borderRadius: BorderRadius.circular(16)))),
+      const SizedBox(height: 16),
+      TextField(controller: _passCtrl, obscureText: true, style: const TextStyle(color: Colors.white), decoration: InputDecoration(labelText: t('password'), labelStyle: const TextStyle(color: Colors.white54), enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(16)), focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: C.primaryPurple), borderRadius: BorderRadius.circular(16)))),
+      if (_error != null) Padding(padding: const EdgeInsets.only(top: 16), child: Text(_error!, style: const TextStyle(color: C.red, fontSize: 13))),
+      const SizedBox(height: 24),
+      TapScale(onTap: _loading ? () {} : _submit, child: Container(padding: const EdgeInsets.symmetric(vertical: 18), decoration: BoxDecoration(gradient: const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), borderRadius: BorderRadius.circular(16)), alignment: Alignment.center, child: _loading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(_isLogin ? t('login') : t('register'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
+      const SizedBox(height: 16),
       TextButton(onPressed: () => setState(() => _isLogin = !_isLogin), child: Text(_isLogin ? t('noAccount') : t('haveAccount'), style: const TextStyle(color: C.primaryCyan))),
-    ]));
+    ])));
   }
 }
 
 // ═══════════════════════════════════════════════════════
-//  ADMIN PANEL (10 FEATURES)
+//  ADMIN PANEL (FULLY FIXED)
 // ═══════════════════════════════════════════════════════
 class AdminPanelScreen extends StatefulWidget { const AdminPanelScreen({super.key}); @override State<AdminPanelScreen> createState() => _AdminPanelScreenState(); }
 class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerProviderStateMixin {
@@ -774,6 +696,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   @override void initState() { super.initState(); _tabController = TabController(length: 3, vsync: this); _loadData(); }
 
   Future<void> _loadData() async {
+    setState(() => _loading = true);
     final state = context.read<AppState>();
     final stats = await state.adminFetchStats();
     final users = await state.adminFetchUsers();
@@ -781,18 +704,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   }
 
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final t = state.t;
+    final state = context.watch<AppState>(); final t = state.t;
     return Scaffold(
-      backgroundColor: isDark ? C.bg : const Color(0xFFF4F6FA),
+      backgroundColor: C.bg,
       appBar: AppBar(
         title: Text(t('adminPanel'), style: const TextStyle(fontWeight: FontWeight.bold)),
-        bottom: TabBar(controller: _tabController, indicatorColor: C.primaryPurple, labelColor: C.primaryPurple, unselectedLabelColor: Colors.grey, tabs: [
+        bottom: TabBar(controller: _tabController, indicatorColor: C.primaryCyan, labelColor: C.primaryCyan, unselectedLabelColor: Colors.white54, tabs: [
           Tab(text: t('adminDashboard'), icon: const Icon(Icons.dashboard_rounded, size: 20)),
           Tab(text: t('adminUsers'), icon: const Icon(Icons.people_rounded, size: 20)),
           Tab(text: t('adminChat'), icon: const Icon(Icons.forum_rounded, size: 20)),
         ]),
       ),
-      body: _loading ? const Center(child: CircularProgressIndicator()) : TabBarView(controller: _tabController, children: [
+      body: _loading ? const Center(child: CircularProgressIndicator(color: C.primaryCyan)) : TabBarView(controller: _tabController, children: [
         _buildDashboard(state, t),
         _buildUsersTab(state, t),
         _buildChatTab(state, t),
@@ -801,54 +724,52 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   }
 
   Widget _buildDashboard(AppState state, String Function(String) t) {
-    final isDark = state.isDarkMode;
     return ListView(padding: const EdgeInsets.all(20), children: [
       Row(children: [
-        Expanded(child: _statCard('👥', _stats['users']?.toString() ?? '0', t('totalUsers'), C.primaryPurple, isDark)),
-        const SizedBox(width: 12),
-        Expanded(child: _statCard('💬', _stats['messages']?.toString() ?? '0', t('totalMsgs'), C.primaryCyan, isDark)),
+        Expanded(child: _statCard('👥', _stats['users']?.toString() ?? '0', t('totalUsers'), C.primaryPurple)),
+        const SizedBox(width: 16),
+        Expanded(child: _statCard('💬', _stats['messages']?.toString() ?? '0', t('totalMsgs'), C.primaryCyan)),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
       Row(children: [
-        Expanded(child: _statCard('🚫', _stats['banned']?.toString() ?? '0', t('bannedUsers'), C.red, isDark)),
-        const SizedBox(width: 12),
-        Expanded(child: _statCard('⚡', 'Active', 'Status', C.green, isDark)),
+        Expanded(child: _statCard('🚫', _stats['banned']?.toString() ?? '0', t('bannedUsers'), C.red)),
+        const SizedBox(width: 16),
+        Expanded(child: _statCard('⚡', 'Active', 'Status', C.green)),
       ]),
       const SizedBox(height: 30),
-      Text(t('adminBroadcast'), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 12),
+      Text(t('broadcast'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 16),
       GlassCard(child: Column(children: [
-        TextField(controller: TextEditingController(), style: TextStyle(color: isDark ? Colors.white : Colors.black), maxLines: 2, decoration: InputDecoration(hintText: t('broadcastHint'), hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))), onSubmitted: (v) { state.adminBroadcast(v); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پیام ارسال شد'))); }),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.send_rounded), label: Text(t('send')), style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 45))),
+        TextField(controller: TextEditingController(), style: const TextStyle(color: Colors.white), maxLines: 2, decoration: InputDecoration(hintText: t('broadcastHint'), hintStyle: const TextStyle(color: Colors.white38), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))), onSubmitted: (v) { state.adminBroadcast(v); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پیام ارسال شد'))); }),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.send_rounded), label: Text(t('send')), style: ElevatedButton.styleFrom(backgroundColor: C.primaryPurple, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
       ])),
     ]);
   }
 
-  Widget _statCard(String icon, String value, String label, Color color, bool isDark) {
-    return GlassCard(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(icon, style: const TextStyle(fontSize: 24)), const SizedBox(height: 12),
-      Text(value, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
-      Text(label, style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12)),
-      const SizedBox(height: 8), Container(height: 4, width: 40, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+  Widget _statCard(String icon, String value, String label, Color color) {
+    return GlassCard(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(icon, style: const TextStyle(fontSize: 28)), const SizedBox(height: 12),
+      Text(value, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+      Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+      const SizedBox(height: 12), Container(height: 4, width: 40, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
     ]));
   }
 
   Widget _buildUsersTab(AppState state, String Function(String) t) {
-    final isDark = state.isDarkMode;
-    return ListView.builder(padding: const EdgeInsets.all(16), itemCount: _users.length, itemBuilder: (context, i) {
+    return ListView.builder(padding: const EdgeInsets.all(20), itemCount: _users.length, itemBuilder: (context, i) {
       final u = _users[i];
       final isSelf = u['username'] == state.username;
-      return GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: ListTile(
+      return StaggeredEntrance(index: i, child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: CircleAvatar(backgroundColor: C.primaryPurple.withOpacity(0.2), child: Text(u['username'][0].toUpperCase(), style: const TextStyle(color: C.primaryPurple, fontWeight: FontWeight.bold))),
-        title: Text(u['username'], style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+        title: Text(u['username'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         subtitle: Row(children: [
-          if (u['is_admin'] == 1) _badge(t('admin'), C.gold, isDark),
-          if (u['is_banned'] == 1) _badge(t('banned'), C.red, isDark),
+          if (u['is_admin'] == 1) _badge(t('admin'), C.gold),
+          if (u['is_banned'] == 1) _badge(t('banned'), C.red),
         ]),
         trailing: isSelf ? null : PopupMenuButton<String>(
-          icon: Icon(Icons.more_vert_rounded, color: isDark ? Colors.white54 : Colors.black54),
+          icon: const Icon(Icons.more_vert_rounded, color: Colors.white54),
           onSelected: (val) async {
             if (val == 'promote') await state.adminAction('promote', u['id']);
             if (val == 'demote') await state.adminAction('demote', u['id']);
@@ -865,26 +786,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
             const PopupMenuItem(value: 'delete', child: Text('حذف کامل', style: TextStyle(color: Colors.red))),
           ],
         ),
-      ));
+      )));
     });
   }
 
-  Widget _badge(String text, Color color, bool isDark) {
-    return Container(margin: const EdgeInsets.only(left: 6), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)));
+  Widget _badge(String text, Color color) {
+    return Container(margin: const EdgeInsets.only(left: 8), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)));
   }
 
   Widget _buildChatTab(AppState state, String Function(String) t) {
-    final isDark = state.isDarkMode;
     return Column(children: [
-      Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-        Expanded(child: ElevatedButton.icon(onPressed: () async { await state.adminClearChat(); state.fetchChatMessages(); _loadData(); }, icon: const Icon(Icons.delete_sweep_rounded), label: Text(t('clearChat')), style: ElevatedButton.styleFrom(backgroundColor: C.red, foregroundColor: Colors.white))),
+      Padding(padding: const EdgeInsets.all(20), child: Row(children: [
+        Expanded(child: ElevatedButton.icon(onPressed: () async { await state.adminClearChat(); state.fetchChatMessages(); _loadData(); }, icon: const Icon(Icons.delete_sweep_rounded), label: Text(t('clearChat')), style: ElevatedButton.styleFrom(backgroundColor: C.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))))),
       ])),
-      Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: state.chatMessages.length, itemBuilder: (context, i) {
+      Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: state.chatMessages.length, itemBuilder: (context, i) {
         final m = state.chatMessages[i];
         return GlassCard(padding: const EdgeInsets.all(12), child: ListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(m.username, style: const TextStyle(color: C.primaryPurple, fontSize: 12, fontWeight: FontWeight.bold)),
-          subtitle: Text(m.text, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+          subtitle: Text(m.text, style: const TextStyle(color: Colors.white)),
           trailing: IconButton(icon: const Icon(Icons.delete_rounded, color: C.red), onPressed: () async { await state.adminDeleteMsg(m.id); state.fetchChatMessages(); _loadData(); }),
         ));
       })),
@@ -899,31 +819,25 @@ class DetailScreen extends StatefulWidget { final MarketAsset asset; const Detai
 class _DetailScreenState extends State<DetailScreen> {
   int _rangeIdx = 0; static const _ranges = ['1D', '1W', '1M', '3M', '1Y'];
   @override Widget build(BuildContext context) {
-    final state = context.watch<AppState>(); final isDark = state.isDarkMode; final a = widget.asset; final t = state.t;
-    final isUp = a.change >= 0; final changeColor = isUp ? C.green : C.red; final isFav = state.favorites.contains(a.code); final textColor = isDark ? Colors.white : Colors.black;
-    final base = a.sparkline; final mult = [1, 2, 4, 12, 30][_rangeIdx]; final ext = List<double>.from(base);
-    for (int k = 0; k < mult - 1; k++) { final r = Random(a.code.hashCode + k); for (int i = 0; i < base.length; i++) { ext.add(ext.last + (r.nextDouble() - 0.48) * 3); } }
-    final high = ext.reduce(max).toDouble(); final low = ext.reduce(min).toDouble();
-
+    final state = context.watch<AppState>(); final a = widget.asset; final t = state.t;
+    final isUp = a.change >= 0; final changeColor = isUp ? C.green : C.red; final isFav = state.favorites.contains(a.code);
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF05050A) : const Color(0xFFF4F6FA),
-      appBar: AppBar(leading: TapScale(onTap: () => Navigator.pop(context), child: Icon(Icons.arrow_back_rounded, color: textColor)), title: Text(a.displayLabelFor(state.lang), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)), actions: [TapScale(onTap: () => state.toggleFav(a.code), child: Padding(padding: const EdgeInsets.all(12.0), child: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: C.gold)))]),
+      backgroundColor: C.bg,
+      appBar: AppBar(leading: IconButton(icon: const Icon(Icons.arrow_back_rounded, color: Colors.white), onPressed: () => Navigator.pop(context)), title: Text(a.displayLabelFor(state.lang), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)), actions: [IconButton(onPressed: () => state.toggleFav(a.code), icon: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: C.gold))]),
       body: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(20, 10, 20, 30), children: [
-        GlassCard(padding: const EdgeInsets.all(20), child: Row(children: [AssetIcon(asset: a, size: 60), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.displayLabelFor(state.lang), style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 14)), const SizedBox(height: 6), Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [Text(a.displayPrice, style: TextStyle(color: textColor, fontSize: 28, fontWeight: FontWeight.w900)), const SizedBox(width: 6), Text(a.isCrypto ? 'USD' : t('toman'), style: TextStyle(color: isDark ? Colors.white54 : Colors.black38, fontSize: 14))])]))])),
-        const SizedBox(height: 20),
-        Row(children: [Icon(isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: changeColor, size: 20), const SizedBox(width: 6), Text(a.changeText, style: TextStyle(color: changeColor, fontSize: 16, fontWeight: FontWeight.w800))]),
+        GlassCard(padding: const EdgeInsets.all(24), child: Row(children: [AssetIcon(asset: a, size: 70), const SizedBox(width: 20), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white54, fontSize: 14, fontWeight: FontWeight.w500)), const SizedBox(height: 8), Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [Text(a.displayPrice, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1)), const SizedBox(width: 8), Text(a.isCrypto ? 'USD' : t('toman'), style: const TextStyle(color: Colors.white38, fontSize: 14))])]))])),
         const SizedBox(height: 24),
-        Row(children: List.generate(_ranges.length, (i) { final sel = _rangeIdx == i; return Expanded(child: TapScale(onTap: () => setState(() => _rangeIdx = i), child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 10), decoration: BoxDecoration(color: sel ? C.primaryPurple : (isDark ? const Color(0xFF1C1C2A) : Colors.white), borderRadius: BorderRadius.circular(12), border: Border.all(color: sel ? C.primaryCyan : (isDark ? Colors.white10 : Colors.black12))), alignment: Alignment.center, child: Text(_ranges[i], style: TextStyle(color: sel ? Colors.white : (isDark ? const Color(0xFFA0A0B0) : Colors.black54), fontSize: 12, fontWeight: FontWeight.bold))))); })),
-        const SizedBox(height: 24),
-        GlassCard(padding: const EdgeInsets.all(16), child: Column(children: [SizedBox(height: 200, child: CustomPaint(painter: _ChartPainter(ext, changeColor), child: const SizedBox.expand())), const SizedBox(height: 12), Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(low.toStringAsFixed(1), style: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38, fontSize: 11)), Text(high.toStringAsFixed(1), style: TextStyle(color: isDark ? const Color(0xFF606070) : Colors.black38, fontSize: 11))])])),
-        const SizedBox(height: 24),
-        GlassCard(padding: const EdgeInsets.all(16), child: Column(children: [_statRow(t('currentPrice'), a.displayPrice, textColor, isDark), Divider(height: 24, color: isDark ? Colors.white.withOpacity(0.05) : Colors.black12), _statRow(t('dailyChange'), a.changeText, changeColor, isDark)])),
+        Row(children: [Icon(isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: changeColor, size: 24), const SizedBox(width: 8), Text(a.changeText, style: TextStyle(color: changeColor, fontSize: 18, fontWeight: FontWeight.w900))]),
         const SizedBox(height: 30),
-        TapScale(onTap: () => state.toggleFav(a.code), child: Container(padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(gradient: isFav ? null : const LinearGradient(colors: [C.primaryPurple, C.primaryCyan]), color: isFav ? (isDark ? const Color(0xFF1C1C2A) : Colors.white) : null, borderRadius: BorderRadius.circular(16), border: isFav ? Border.all(color: C.primaryPurple) : null), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: isFav ? C.primaryPurple : Colors.white), const SizedBox(width: 8), Text(isFav ? t('removeFromWatch') : t('addToWatch'), style: TextStyle(color: isFav ? C.primaryPurple : Colors.white, fontWeight: FontWeight.bold, fontSize: 15))]))),
+        Row(children: List.generate(_ranges.length, (i) { final sel = _rangeIdx == i; return Expanded(child: TapScale(onTap: () => setState(() => _rangeIdx = i), child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: sel ? C.primaryPurple : C.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: sel ? C.primaryCyan : Colors.transparent)), alignment: Alignment.center, child: Text(_ranges[i], style: TextStyle(color: sel ? Colors.white : Colors.white54, fontSize: 13, fontWeight: FontWeight.bold))))); })),
+        const SizedBox(height: 30),
+        GlassCard(padding: const EdgeInsets.all(20), child: SizedBox(height: 240, child: CustomPaint(painter: _ChartPainter(a.sparkline, changeColor), child: const SizedBox.expand()))),
+        const SizedBox(height: 30),
+        GlassCard(padding: const EdgeInsets.all(20), child: Column(children: [_statRow(t('currentPrice'), a.displayPrice, Colors.white), const Divider(color: Colors.white12, height: 30), _statRow(t('dailyChange'), a.changeText, changeColor)])),
       ])),
     );
   }
-  Widget _statRow(String label, String value, Color color, bool isDark) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: TextStyle(color: isDark ? const Color(0xFFA0A0B0) : Colors.black54, fontSize: 14)), Text(value, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold))]);
+  Widget _statRow(String label, String value, Color color) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(color: Colors.white54, fontSize: 15, fontWeight: FontWeight.w500)), Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold))]);
 }
 
 class _ChartPainter extends CustomPainter {
@@ -931,11 +845,10 @@ class _ChartPainter extends CustomPainter {
   @override void paint(Canvas canvas, Size size) {
     if (data.length < 2) return; final minV = data.reduce(min).toDouble(); final maxV = data.reduce(max).toDouble(); final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
     final linePath = Path(); final fillPath = Path()..moveTo(0, size.height);
-    for (int i = 0; i < data.length; i++) { final x = (i / (data.length - 1)) * size.width; final y = size.height - ((data[i] - minV) / range) * (size.height - 10) - 5; if (i == 0) linePath.moveTo(x, y); else linePath.lineTo(x, y); fillPath.lineTo(x, y); }
+    for (int i = 0; i < data.length; i++) { final x = (i / (data.length - 1)) * size.width; final y = size.height - ((data[i] - minV) / range) * (size.height - 20) - 10; if (i == 0) linePath.moveTo(x, y); else linePath.lineTo(x, y); fillPath.lineTo(x, y); }
     fillPath..lineTo(size.width, size.height)..close();
-    canvas.drawPath(fillPath, Paint()..shader = LinearGradient(colors: [color.withOpacity(0.3), color.withOpacity(0)], begin: Alignment.topCenter, end: Alignment.bottomCenter).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
-    canvas.drawPath(linePath, Paint()..color = color..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
-    final lx = size.width; final ly = size.height - ((data.last - minV) / range) * (size.height - 10) - 5; canvas.drawCircle(Offset(lx, ly), 4, Paint()..color = color);
+    canvas.drawPath(fillPath, Paint()..shader = LinearGradient(colors: [color.withOpacity(0.4), color.withOpacity(0)], begin: Alignment.topCenter, end: Alignment.bottomCenter).createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
+    canvas.drawPath(linePath, Paint()..color = color..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round);
   }
   @override bool shouldRepaint(covariant _ChartPainter old) => false;
 }
