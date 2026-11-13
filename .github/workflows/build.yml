@@ -36,7 +36,7 @@ jobs:
           
       - name: Add Permissions
         run: |
-          # اضافه کردن مجوز اینترنت و مجوز نوتیفیکیشن
+          # اضافه کردن مجوز اینترنت و مجوز نوتیفیکیشن (برای اندروید 13+)
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application|' android/app/src/main/AndroidManifest.xml
 
       - name: Setup Keystore
@@ -112,8 +112,8 @@ jobs:
         run: dart run flutter_native_splash:create
 
       - name: Build APK
-        # نسخه را به 2.2.0 و بیلد 18 تغییر دادیم تا آپدیت شود
-        run: flutter build apk --release --build-name=2.2.0 --build-number=18
+        # نسخه را با pubspec هماهنگ کردیم
+        run: flutter build apk --release --build-name=2.2.1 --build-number=19
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
