@@ -1,7 +1,7 @@
 name: ping_market
 description: Ping Market Android app
 publish_to: "none"
-version: 2.1.8+16
+version: 2.2.0+17
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -12,6 +12,7 @@ dependencies:
   http: ^1.2.2
   shared_preferences: ^2.3.2
   provider: ^6.1.2
+  flutter_local_notifications: ^17.2.2
 
 dev_dependencies:
   flutter_test:
@@ -31,7 +32,7 @@ flutter_launcher_icons:
   image_path: "assets/logo.png"
   adaptive_icon_background: "#05050A"
   adaptive_icon_foreground: "assets/logo.png"
-  adaptive_icon_foreground_inset: 22 # این خط باعث میشه لوگو زوم نشه و در کادر قرار بگیره
+  adaptive_icon_foreground_inset: 22
   min_sdk_android: 21
 
 flutter_native_splash:
