@@ -34,9 +34,10 @@ jobs:
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*"/id "org.jetbrains.kotlin.android" version "2.4.20"/' android/settings.gradle
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.9-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
           
-      - name: Add INTERNET permission
+      - name: Add Permissions
         run: |
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
+          # اضافه کردن مجوز اینترنت و مجوز نوتیفیکیشن
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application|' android/app/src/main/AndroidManifest.xml
 
       - name: Setup Keystore
         run: |
@@ -111,8 +112,8 @@ jobs:
         run: dart run flutter_native_splash:create
 
       - name: Build APK
-        # اینجا ما به زور نسخه (Version) را بالا می‌بریم تا مایکت و گوشی حتما آپدیت را قبول کنند
-        run: flutter build apk --release --build-name=2.1.4 --build-number=10
+        # نسخه را به 2.2.0 و بیلد 18 تغییر دادیم تا آپدیت شود
+        run: flutter build apk --release --build-name=2.2.0 --build-number=18
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
