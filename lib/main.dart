@@ -48,7 +48,7 @@ ThemeData get lightTheme => ThemeData(
 );
 
 // ═══════════════════════════════════════════════════════
-//  NOTIFICATION MANAGER
+//  NOTIFICATION MANAGER (With Permission Request)
 // ═══════════════════════════════════════════════════════
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -56,6 +56,13 @@ Future<void> initNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
   const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // درخواست مجوز نوتیفیکیشن برای اندروید ۱۳+
+  final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+  if (androidImplementation != null) {
+    await androidImplementation.requestNotificationsPermission();
+  }
 }
 
 Future<void> showNotification(String title, String body) async {
@@ -133,8 +140,8 @@ class MarketAsset {
 }
 
 class ChatMessage {
-  final int id; final String username, text; final bool isSystem;
-  ChatMessage({required this.id, required this.username, required this.text, this.isSystem = false});
+  final int id; final String username, text; final bool isSystem; final bool isPending;
+  ChatMessage({required this.id, required this.username, required this.text, this.isSystem = false, this.isPending = false});
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(id: j['id'], username: j['username'], text: j['text'], isSystem: j['is_system'] == 1);
 }
 
@@ -151,6 +158,7 @@ class AppState extends ChangeNotifier {
   
   List<ChatMessage> chatMessages = [];
   int _lastSystemMsgId = 0;
+  bool _isSending = false;
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
@@ -233,8 +241,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Chat Methods
+  // Chat Methods (Fix: Optimistic UI without disappearing)
   Future<void> fetchChatMessages() async {
+    if (_isSending) return; // اگر در حال ارسال پیام هستیم، لیست رو رفرش نکن تا پیام غیب نشه
     try {
       final r = await http.get(Uri.parse(kChatUrl));
       if (r.statusCode == 200) {
@@ -242,17 +251,13 @@ class AppState extends ChangeNotifier {
         if (data['success']) {
           final newMessages = (data['messages'] as List).map((e) => ChatMessage.fromJson(e)).toList();
           
-          // Check for new system message to show notification
           if (newMessages.isNotEmpty) {
             final lastMsg = newMessages.last;
             if (lastMsg.isSystem && lastMsg.id != _lastSystemMsgId) {
-              if (_lastSystemMsgId != 0) { // Don't notify on first load
-                showNotification('پیام همگانی', lastMsg.text);
-              }
+              if (_lastSystemMsgId != 0) { showNotification('پیام همگانی', lastMsg.text); }
               _lastSystemMsgId = lastMsg.id;
             }
           }
-
           chatMessages = newMessages;
           notifyListeners();
         }
@@ -262,20 +267,26 @@ class AppState extends ChangeNotifier {
 
   Future<void> sendChatMessage(String text) async {
     if (token == null || text.trim().isEmpty) return;
+    _isSending = true;
+    
+    // پیام موقت با علامت ساعت
     final tempId = -DateTime.now().millisecondsSinceEpoch;
-    final tempMsg = ChatMessage(id: tempId, username: username!, text: text);
+    final tempMsg = ChatMessage(id: tempId, username: username!, text: text, isPending: true);
     chatMessages.add(tempMsg);
     notifyListeners();
 
     try {
       final r = await http.post(Uri.parse(kSendMsgUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'text': text}));
       if (r.statusCode != 200) {
+        // اگر خطا داد، پیام موقت رو حذف کن
         chatMessages.removeWhere((m) => m.id == tempId);
       }
     } catch (_) {
       chatMessages.removeWhere((m) => m.id == tempId);
     } finally {
+      _isSending = false;
       notifyListeners();
+      fetchChatMessages(); // حالا که ارسال تمام شد، لیست رو آپدیت کن
     }
   }
 
@@ -330,7 +341,7 @@ class PingMarketApp extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP SHELL (FIXED ANIMATION)
+//  APP SHELL
 // ═══════════════════════════════════════════════════════
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
@@ -340,8 +351,7 @@ class AppShell extends StatelessWidget {
       extendBody: true,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
+        switchInCurve: Curves.easeOut, switchOutCurve: Curves.easeIn,
         child: IndexedStack(key: ValueKey(state.selectedTab), index: state.selectedTab, children: const [HomeTab(), PricesTab(), ChatTab(), FavoritesTab(), ProfileTab()]),
       ),
       bottomNavigationBar: _FloatingNav(index: state.selectedTab, onChanged: (i) => state.setTab(i)),
@@ -442,7 +452,7 @@ class _ShimmerCardState extends State<ShimmerCard> with SingleTickerProviderStat
 }
 
 // ═══════════════════════════════════════════════════════
-//  TAB 1: HOME
+//  TAB 1: HOME (با قابلیت تغییر ارز دلخواه)
 // ═══════════════════════════════════════════════════════
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -462,7 +472,11 @@ class HomeTab extends StatelessWidget {
           TapScale(onTap: state.toggleLang, child: GlassCard(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), child: Text(state.lang == 'fa' ? 'FA' : 'EN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
         ])),
         const SizedBox(height: 30),
-        StaggeredEntrance(index: 1, child: _buildFeaturedCard(state, state.featuredAsset ?? MarketAsset(code: 'USD', symbol: 'USD', labelFa: 'دلار', labelEn: 'Dollar', icon: '💵', isCrypto: false, change: 0, sparkline: []))),
+        // باکس ارز دلخواه با قابلیت کلیک
+        StaggeredEntrance(index: 1, child: GestureDetector(
+          onTap: () => _showFeaturedSelector(context, state),
+          child: _buildFeaturedCard(state, state.featuredAsset ?? MarketAsset(code: 'USD', symbol: 'USD', labelFa: 'دلار', labelEn: 'Dollar', icon: '💵', isCrypto: false, change: 0, sparkline: [])),
+        )),
         const SizedBox(height: 30),
         StaggeredEntrance(index: 2, child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           _quickAction(context, state, 'GOLD_18_RLS', 'طلا', Icons.diamond_rounded, C.gold),
@@ -492,6 +506,15 @@ class HomeTab extends StatelessWidget {
         ]),
       ]),
     );
+  }
+
+  void _showFeaturedSelector(BuildContext context, AppState state) {
+    showModalBottomSheet(context: context, backgroundColor: C.cardBg, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))), builder: (ctx) {
+      return SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Padding(padding: const EdgeInsets.all(20), child: Text(state.t('selectFeatured'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+        Flexible(child: ListView.builder(shrinkWrap: true, itemCount: state.all.length, itemBuilder: (_, i) { final a = state.all[i]; return ListTile(leading: AssetIcon(asset: a, size: 40), title: Text(a.displayLabelFor(state.lang), style: const TextStyle(color: Colors.white)), onTap: () { state.setFeatured(a.code); Navigator.pop(ctx); }); })),
+      ]));
+    });
   }
 
   Widget _quickAction(BuildContext context, AppState state, String code, String label, IconData icon, Color color) {
@@ -536,7 +559,7 @@ class _PricesTabState extends State<PricesTab> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  TAB 3: CHAT ROOM (REWRITTEN & FIXED)
+//  TAB 3: CHAT ROOM (UI با آواتار و فیکس شدن باگ غیب شدن)
 // ═══════════════════════════════════════════════════════
 class ChatTab extends StatefulWidget { const ChatTab({super.key}); @override State<ChatTab> createState() => _ChatTabState(); }
 class _ChatTabState extends State<ChatTab> {
@@ -546,7 +569,7 @@ class _ChatTabState extends State<ChatTab> {
 
   @override void initState() { 
     super.initState(); 
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _fetch()); 
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _fetch()); 
     _fetch(); 
   }
   
@@ -580,7 +603,7 @@ class _ChatTabState extends State<ChatTab> {
         itemBuilder: (context, index) {
           final msg = state.chatMessages[index];
           final isMe = msg.username == state.username;
-          return _bubble(msg, isMe, index);
+          return _bubble(msg, isMe, index, state);
         },
       )))),
 
@@ -594,17 +617,31 @@ class _ChatTabState extends State<ChatTab> {
     ]));
   }
 
-  Widget _bubble(ChatMessage msg, bool isMe, int index) {
+  Widget _bubble(ChatMessage msg, bool isMe, int index, AppState state) {
     if (msg.isSystem) {
       return StaggeredEntrance(index: index, child: Center(child: Container(margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: C.gold.withOpacity(0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: C.gold.withOpacity(0.3))), child: Text(msg.text, style: const TextStyle(color: C.gold, fontSize: 13, fontWeight: FontWeight.bold)))));
     }
-    return StaggeredEntrance(index: index, child: Align(alignment: isMe ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd, child: Container(
-      margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-      decoration: BoxDecoration(gradient: isMe ? const LinearGradient(colors: [C.primaryPurple, Color(0xFF5A189A)]) : null, color: isMe ? null : C.bg, borderRadius: BorderRadius.only(topLeft: const Radius.circular(24), topRight: const Radius.circular(24), bottomLeft: Radius.circular(isMe ? 24 : 4), bottomRight: Radius.circular(isMe ? 4 : 24)), boxShadow: [BoxShadow(color: isMe ? C.primaryPurple.withOpacity(0.3) : Colors.transparent, blurRadius: 10, offset: const Offset(0, 4))]),
-      child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end, children: [
-        if (!isMe) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(msg.username, style: const TextStyle(color: C.primaryCyan, fontSize: 12, fontWeight: FontWeight.bold))),
-        Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
-      ]),
+    
+    final avatar = isMe ? (state.avatar ?? '👤') : '👤';
+    
+    return StaggeredEntrance(index: index, child: Align(alignment: isMe ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd, child: Row(
+      mainAxisAlignment: isMe ? MainAxisAlignment.start : MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!isMe) Container(margin: const EdgeInsets.only(right: 8, top: 4), width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: C.cardBg, border: Border.all(color: C.primaryCyan.withOpacity(0.3))), alignment: Alignment.center, child: Text(avatar, style: const TextStyle(fontSize: 20))),
+        Flexible(child: Container(
+          margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+          decoration: BoxDecoration(gradient: isMe ? const LinearGradient(colors: [C.primaryPurple, Color(0xFF5A189A)]) : null, color: isMe ? null : C.bg, borderRadius: BorderRadius.only(topLeft: Radius.circular(isMe ? 24 : 4), topRight: Radius.circular(isMe ? 4 : 24), bottomLeft: const Radius.circular(24), bottomRight: const Radius.circular(24)), boxShadow: [BoxShadow(color: isMe ? C.primaryPurple.withOpacity(0.3) : Colors.transparent, blurRadius: 10, offset: const Offset(0, 4))]),
+          child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end, children: [
+            if (!isMe) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(msg.username, style: const TextStyle(color: C.primaryCyan, fontSize: 12, fontWeight: FontWeight.bold))),
+            Row(children: [
+              Flexible(child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4))),
+              if (msg.isPending) const Padding(padding: EdgeInsets.only(left: 8), child: SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54))),
+            ]),
+          ]),
+        )),
+        if (isMe) Container(margin: const EdgeInsets.only(left: 8, top: 4), width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: C.cardBg, border: Border.all(color: C.primaryPurple.withOpacity(0.3))), alignment: Alignment.center, child: Text(avatar, style: const TextStyle(fontSize: 20))),
+      ],
     )));
   }
 }
@@ -728,7 +765,7 @@ class _AuthFormState extends State<AuthForm> {
 }
 
 // ═══════════════════════════════════════════════════════
-//  ADMIN PANEL (FULLY FIXED)
+//  ADMIN PANEL
 // ═══════════════════════════════════════════════════════
 class AdminPanelScreen extends StatefulWidget { const AdminPanelScreen({super.key}); @override State<AdminPanelScreen> createState() => _AdminPanelScreenState(); }
 class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerProviderStateMixin {
