@@ -111,7 +111,7 @@ class NotificationModel {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP STATE
+//  APP STATE (فیکس قطعی)
 // ═══════════════════════════════════════════════════════
 class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [], crypto = [];
@@ -124,6 +124,8 @@ class AppState extends ChangeNotifier {
   List<ChatMessage> chatMessages = [];
   List<NotificationModel> notifications = [];
   int _lastSystemMsgId = 0;
+  bool _isSendingMsg = false;
+  Timer? _globalChatTimer;
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
@@ -140,6 +142,10 @@ class AppState extends ChangeNotifier {
     featuredCode = p.getString('featured') ?? 'USD_RLS';
     token = p.getString('token'); username = p.getString('username');
     avatar = p.getString('avatar'); isAdmin = p.getBool('isAdmin') ?? false;
+    
+    // شروع تایمر سراسری برای چت و نوتیفیکیشن
+    _globalChatTimer = Timer.periodic(const Duration(seconds: 3), (_) => fetchChatMessages());
+    
     notifyListeners(); await refresh();
   }
 
@@ -209,8 +215,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ فیکس نهایی چت: ادغام هوشمند پیام‌ها
+  // ✅ فیکس نهایی: پیام ارسالی تا تایید سرور قفل می‌شود
   Future<void> fetchChatMessages() async {
+    if (_isSendingMsg) return; // اگر در حال ارسال پیام هستیم، هیچ آپدیتی نکن!
     try {
       final r = await http.get(Uri.parse(kChatUrl));
       if (r.statusCode == 200) {
@@ -218,24 +225,20 @@ class AppState extends ChangeNotifier {
         if (data['success']) {
           final serverMessages = (data['messages'] as List).map((e) => ChatMessage.fromJson(e)).toList();
           
-          // 1. پیام‌هایی که هنوز در حال ارسال هستند (Pending) را جدا میکنیم
           final pending = chatMessages.where((m) => m.isPending).toList();
-          
-          // 2. لیست اصلی را با پیام‌های سرور جایگزین میکنیم
           chatMessages = serverMessages;
-          
-          // 3. پیام‌های Pending را به انتهای لیست اضافه میکنیم
           chatMessages.addAll(pending);
           
-          // 4. چک کردن نوتیفیکیشن سیستم
           if (serverMessages.isNotEmpty) {
             final lastMsg = serverMessages.last;
             if (lastMsg.isSystem && lastMsg.id != _lastSystemMsgId) {
-              if (_lastSystemMsgId != 0) { showNotification('پیام همگانی', lastMsg.text); fetchNotifications(); }
+              if (_lastSystemMsgId != 0) { 
+                showNotification('پیام همگانی', lastMsg.text); 
+                fetchNotifications(); 
+              }
               _lastSystemMsgId = lastMsg.id;
             }
           }
-          
           notifyListeners();
         }
       }
@@ -244,24 +247,22 @@ class AppState extends ChangeNotifier {
 
   Future<void> sendChatMessage(String text) async {
     if (token == null || text.trim().isEmpty) return;
+    _isSendingMsg = true; // قفل کردن آپدیت‌ها
     
     final tempId = -DateTime.now().millisecondsSinceEpoch;
-    final tempMsg = ChatMessage(id: tempId, username: username!, text: text, isPending: true);
-    chatMessages.add(tempMsg);
+    chatMessages.add(ChatMessage(id: tempId, username: username!, text: text, isPending: true));
     notifyListeners();
 
     try {
       final r = await http.post(Uri.parse(kSendMsgUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'text': text}));
       if (r.statusCode == 200) {
-        // اگر ارسال موفق بود، پیام موقت را حذف میکنیم و لیست را از سرور می‌گیریم
-        chatMessages.removeWhere((m) => m.id == tempId);
-        fetchChatMessages();
-      } else {
-        chatMessages.removeWhere((m) => m.id == tempId);
-        notifyListeners();
+        await fetchChatMessages(); // گرفتن لیست جدید
       }
     } catch (_) {
-      chatMessages.removeWhere((m) => m.id == tempId);
+      // در صورت خطای شبکه، پیام همچنان با علامت Pending می‌ماند
+    } finally {
+      _isSendingMsg = false;
+      chatMessages.removeWhere((m) => m.id == tempId); // فقط وقتی سرور جواب داد، پیام موقت پاک میشود
       notifyListeners();
     }
   }
@@ -292,7 +293,7 @@ class PingMarketApp extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP SHELL (سرعت بالا)
+//  APP SHELL
 // ═══════════════════════════════════════════════════════
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
@@ -524,12 +525,9 @@ class ChatTab extends StatefulWidget { const ChatTab({super.key}); @override Sta
 class _ChatTabState extends State<ChatTab> {
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
-  Timer? _timer;
 
-  @override void initState() { super.initState(); _timer = Timer.periodic(const Duration(seconds: 3), (_) => _fetch()); _fetch(); }
-  @override void dispose() { _timer?.cancel(); _msgCtrl.dispose(); _scrollCtrl.dispose(); super.dispose(); }
-
-  void _fetch() async { if (mounted) await context.read<AppState>().fetchChatMessages(); }
+  @override void initState() { super.initState(); }
+  @override void dispose() { _msgCtrl.dispose(); _scrollCtrl.dispose(); super.dispose(); }
   
   void _scroll() { WidgetsBinding.instance.addPostFrameCallback((_) { if (_scrollCtrl.hasClients) _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic); }); }
 
