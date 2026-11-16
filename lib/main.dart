@@ -111,7 +111,7 @@ class NotificationModel {
 }
 
 // ═══════════════════════════════════════════════════════
-//  APP STATE (فیکس قطعی)
+//  APP STATE (فیکس قطعی چت با ادغام امن)
 // ═══════════════════════════════════════════════════════
 class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [], crypto = [];
@@ -124,7 +124,6 @@ class AppState extends ChangeNotifier {
   List<ChatMessage> chatMessages = [];
   List<NotificationModel> notifications = [];
   int _lastSystemMsgId = 0;
-  bool _isSendingMsg = false;
   Timer? _globalChatTimer;
 
   List<MarketAsset> get all => [...iran, ...crypto];
@@ -147,6 +146,12 @@ class AppState extends ChangeNotifier {
     _globalChatTimer = Timer.periodic(const Duration(seconds: 3), (_) => fetchChatMessages());
     
     notifyListeners(); await refresh();
+  }
+
+  @override
+  void dispose() {
+    _globalChatTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> refresh() async {
@@ -215,9 +220,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ فیکس نهایی: پیام ارسالی تا تایید سرور قفل می‌شود
+  // ✅ فیکس نهایی و قطعی چت: پیام‌ها به هیچ وجه حذف نمی‌شوند
   Future<void> fetchChatMessages() async {
-    if (_isSendingMsg) return; // اگر در حال ارسال پیام هستیم، هیچ آپدیتی نکن!
     try {
       final r = await http.get(Uri.parse(kChatUrl));
       if (r.statusCode == 200) {
@@ -225,10 +229,16 @@ class AppState extends ChangeNotifier {
         if (data['success']) {
           final serverMessages = (data['messages'] as List).map((e) => ChatMessage.fromJson(e)).toList();
           
+          // 1. پیام‌هایی که هنوز تایید نشده‌اند (Pending) را از لیست فعلی جدا می‌کنیم
           final pending = chatMessages.where((m) => m.isPending).toList();
+          
+          // 2. لیست سرور را به عنوان پایه قرار می‌دهیم
           chatMessages = serverMessages;
+          
+          // 3. پیام‌های Pending را دوباره به انتهای لیست اضافه می‌کنیم
           chatMessages.addAll(pending);
           
+          // 4. چک کردن نوتیفیکیشن سیستم
           if (serverMessages.isNotEmpty) {
             final lastMsg = serverMessages.last;
             if (lastMsg.isSystem && lastMsg.id != _lastSystemMsgId) {
@@ -239,6 +249,7 @@ class AppState extends ChangeNotifier {
               _lastSystemMsgId = lastMsg.id;
             }
           }
+          
           notifyListeners();
         }
       }
@@ -247,23 +258,25 @@ class AppState extends ChangeNotifier {
 
   Future<void> sendChatMessage(String text) async {
     if (token == null || text.trim().isEmpty) return;
-    _isSendingMsg = true; // قفل کردن آپدیت‌ها
     
+    // 1. ساخت پیام موقت با شناسه منفی و علامت Pending
     final tempId = -DateTime.now().millisecondsSinceEpoch;
-    chatMessages.add(ChatMessage(id: tempId, username: username!, text: text, isPending: true));
+    final tempMsg = ChatMessage(id: tempId, username: username!, text: text, isPending: true);
+    
+    // 2. اضافه کردن به لیست محلی
+    chatMessages.add(tempMsg);
     notifyListeners();
 
     try {
+      // 3. ارسال به سرور
       final r = await http.post(Uri.parse(kSendMsgUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'text': text}));
+      
       if (r.statusCode == 200) {
-        await fetchChatMessages(); // گرفتن لیست جدید
+        // 4. اگر ارسال موفق بود، لیست را از سرور می‌گیریم (پیام‌های Pending در تابع fetch حفظ می‌شوند)
+        await fetchChatMessages();
       }
     } catch (_) {
-      // در صورت خطای شبکه، پیام همچنان با علامت Pending می‌ماند
-    } finally {
-      _isSendingMsg = false;
-      chatMessages.removeWhere((m) => m.id == tempId); // فقط وقتی سرور جواب داد، پیام موقت پاک میشود
-      notifyListeners();
+      // در صورت خطای شبکه، پیام موقت در لیست باقی می‌ماند و ناپدید نمی‌شود
     }
   }
 
