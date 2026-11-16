@@ -112,7 +112,7 @@ jobs:
         run: dart run flutter_native_splash:create
 
       - name: Build APK
-        run: flutter build apk --release --build-name=2.2.2 --build-number=21
+        run: flutter build apk --release --build-name=2.2.4 --build-number=24
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
