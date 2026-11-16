@@ -69,14 +69,12 @@ jobs:
               ndkVersion "26.1.10909125"
 
               compileOptions {
-                  coreLibraryDesugaringEnabled true // ← این خط اضافه شد
+                  coreLibraryDesugaringEnabled true
                   sourceCompatibility JavaVersion.VERSION_1_8
                   targetCompatibility JavaVersion.VERSION_1_8
               }
 
-              kotlinOptions {
-                  jvmTarget = '1.8'
-              }
+              kotlinOptions { jvmTarget = '1.8' }
 
               defaultConfig {
                   applicationId "com.example.ping_market"
@@ -100,12 +98,10 @@ jobs:
               }
           }
 
-          flutter {
-              source '../..'
-          }
+          flutter { source '../..' }
 
           dependencies {
-              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4' // ← این خط هم اضافه شد
+              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
           }
           EOF
 
@@ -116,7 +112,7 @@ jobs:
         run: dart run flutter_native_splash:create
 
       - name: Build APK
-        run: flutter build apk --release --build-name=2.2.1 --build-number=20
+        run: flutter build apk --release --build-name=2.2.2 --build-number=21
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
