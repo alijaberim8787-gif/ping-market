@@ -20,6 +20,7 @@ const String kRegisterUrl = '$kBackend/api/auth/register';
 const String kUpdateProfileUrl = '$kBackend/api/user/update';
 const String kChatUrl = '$kBackend/api/chat/messages';
 const String kSendMsgUrl = '$kBackend/api/chat/send';
+const String kNotificationsUrl = '$kBackend/api/notifications';
 
 class C {
   static const primaryPurple = Color(0xFF9D4EDD);
@@ -63,6 +64,7 @@ class S {
     'login': ['ورود', 'Login'], 'register': ['ثبت‌نام', 'Register'], 'username': ['نام کاربری', 'Username'], 'password': ['رمز عبور', 'Password'],
     'logout': ['خروج', 'Logout'], 'typeMessage': ['پیام بنویسید...', 'Type a message...'], 'loginToChat': ['برای ارسال پیام وارد شوید', 'Login to send messages'],
     'darkMode': ['حالت تاریک', 'Dark mode'], 'language': ['زبان', 'Language'], 'noFavs': ['لیست شما خالی است', 'Your list is empty'], 'noResults': ['موردی یافت نشد', 'No results'],
+    'notifications': ['اعلان‌ها', 'Notifications'], 'noNotifs': ['اعلانی وجود ندارد', 'No notifications'],
   };
   static String get(String key, String lang) { final v = _d[key]; return v == null ? key : (lang == 'en' ? v[1] : v[0]); }
 }
@@ -102,8 +104,14 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(id: j['id'], username: j['username'], text: j['text'], isSystem: j['is_system'] == 1);
 }
 
+class NotificationModel {
+  final int id; final String title, body;
+  NotificationModel({required this.id, required this.title, required this.body});
+  factory NotificationModel.fromJson(Map<String, dynamic> j) => NotificationModel(id: j['id'], title: j['title'], body: j['body']);
+}
+
 // ═══════════════════════════════════════════════════════
-//  APP STATE (فیکس کامل مشکل چت)
+//  APP STATE
 // ═══════════════════════════════════════════════════════
 class AppState extends ChangeNotifier {
   List<MarketAsset> iran = [], crypto = [];
@@ -114,6 +122,8 @@ class AppState extends ChangeNotifier {
   String? token, username, avatar; bool isAdmin = false;
   
   List<ChatMessage> chatMessages = [];
+  List<NotificationModel> notifications = [];
+  int _lastSystemMsgId = 0;
 
   List<MarketAsset> get all => [...iran, ...crypto];
   List<MarketAsset> get favList => all.where((a) => favorites.contains(a.code)).toList();
@@ -135,7 +145,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> refresh() async {
     loading = iran.isEmpty && crypto.isEmpty; error = null; notifyListeners();
-    try { await Future.wait([_loadAssets(), _loadCrypto()]).timeout(const Duration(seconds: 15)); } 
+    try { await Future.wait([_loadAssets(), _loadCrypto(), fetchNotifications()]).timeout(const Duration(seconds: 15)); } 
     catch (e) { error = 'Connection Error'; } finally { loading = false; notifyListeners(); }
   }
 
@@ -144,6 +154,9 @@ class AppState extends ChangeNotifier {
   }
   Future<void> _loadCrypto() async {
     try { final r = await http.get(Uri.parse(kCryptoUrl)).timeout(const Duration(seconds: 10)); if (r.statusCode == 200) { final data = jsonDecode(r.body); if (data['assets'] != null) crypto = (data['assets'] as List).map((e) => MarketAsset.fromJson(Map<String, dynamic>.from(e))).toList(); } } catch (_) {}
+  }
+  Future<void> fetchNotifications() async {
+    try { final r = await http.get(Uri.parse(kNotificationsUrl)); if (r.statusCode == 200) { final data = jsonDecode(r.body); if (data['success']) { notifications = (data['notifications'] as List).map((e) => NotificationModel.fromJson(e)).toList(); notifyListeners(); } } } catch (_) {}
   }
 
   Future<void> toggleFav(String code) async { favorites.contains(code) ? favorites.remove(code) : favorites.add(code); notifyListeners(); final p = await SharedPreferences.getInstance(); await p.setStringList('favs', favorites.toList()); }
@@ -196,7 +209,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ فیکس مشکل چت: پیام‌های در حال ارسال هرگز ناپدید نمی‌شوند
+  // ✅ فیکس نهایی چت: ادغام هوشمند پیام‌ها
   Future<void> fetchChatMessages() async {
     try {
       final r = await http.get(Uri.parse(kChatUrl));
@@ -205,14 +218,23 @@ class AppState extends ChangeNotifier {
         if (data['success']) {
           final serverMessages = (data['messages'] as List).map((e) => ChatMessage.fromJson(e)).toList();
           
-          // نگه داشتن پیام‌های در حال ارسال (Pending) که هنوز به سرور نرسیدن
+          // 1. پیام‌هایی که هنوز در حال ارسال هستند (Pending) را جدا میکنیم
           final pending = chatMessages.where((m) => m.isPending).toList();
           
-          // حذف پیام‌های در حال ارسال از لیست قبلی
+          // 2. لیست اصلی را با پیام‌های سرور جایگزین میکنیم
           chatMessages = serverMessages;
           
-          // اضافه کردن مجدد پیام‌های در حال ارسال
+          // 3. پیام‌های Pending را به انتهای لیست اضافه میکنیم
           chatMessages.addAll(pending);
+          
+          // 4. چک کردن نوتیفیکیشن سیستم
+          if (serverMessages.isNotEmpty) {
+            final lastMsg = serverMessages.last;
+            if (lastMsg.isSystem && lastMsg.id != _lastSystemMsgId) {
+              if (_lastSystemMsgId != 0) { showNotification('پیام همگانی', lastMsg.text); fetchNotifications(); }
+              _lastSystemMsgId = lastMsg.id;
+            }
+          }
           
           notifyListeners();
         }
@@ -223,7 +245,6 @@ class AppState extends ChangeNotifier {
   Future<void> sendChatMessage(String text) async {
     if (token == null || text.trim().isEmpty) return;
     
-    // ساخت پیام موقت با تیک در حال ارسال
     final tempId = -DateTime.now().millisecondsSinceEpoch;
     final tempMsg = ChatMessage(id: tempId, username: username!, text: text, isPending: true);
     chatMessages.add(tempMsg);
@@ -232,11 +253,10 @@ class AppState extends ChangeNotifier {
     try {
       final r = await http.post(Uri.parse(kSendMsgUrl), headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}, body: jsonEncode({'text': text}));
       if (r.statusCode == 200) {
-        // اگر ارسال موفق بود، فقط وضعیت Pending رو از بین می‌بریم تا از لیست پاک بشه و نسخه سرور جاش بیاد
+        // اگر ارسال موفق بود، پیام موقت را حذف میکنیم و لیست را از سرور می‌گیریم
         chatMessages.removeWhere((m) => m.id == tempId);
         fetchChatMessages();
       } else {
-        // اگر خطا داد، پیام رو حذف می‌کنیم
         chatMessages.removeWhere((m) => m.id == tempId);
         notifyListeners();
       }
@@ -272,7 +292,7 @@ class PingMarketApp extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════
-//  ✅ APP SHELL (فیکس سرعت تب‌ها)
+//  APP SHELL (سرعت بالا)
 // ═══════════════════════════════════════════════════════
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
@@ -280,11 +300,7 @@ class AppShell extends StatelessWidget {
     final state = context.watch<AppState>();
     return Scaffold(
       extendBody: true,
-      // ✅ انیمیشن سنگین حذف شد. تب‌ها آنی عوض می‌شن.
-      body: IndexedStack(
-        index: state.selectedTab,
-        children: const [HomeTab(), PricesTab(), ChatTab(), FavoritesTab(), ProfileTab()],
-      ),
+      body: IndexedStack(index: state.selectedTab, children: const [HomeTab(), PricesTab(), ChatTab(), FavoritesTab(), ProfileTab()]),
       bottomNavigationBar: _FloatingNav(index: state.selectedTab, onChanged: (i) => state.setTab(i)),
     );
   }
@@ -385,7 +401,13 @@ class HomeTab extends StatelessWidget {
       color: C.primaryPurple, backgroundColor: C.cardBg, onRefresh: state.refresh,
       child: ListView(padding: const EdgeInsets.fromLTRB(20, 10, 20, 100), children: [
         StaggeredEntrance(index: 0, child: Row(children: [
-          GlassCard(padding: const EdgeInsets.all(10), child: const Icon(Icons.notifications_none_rounded, color: Colors.white)),
+          TapScale(
+            onTap: () => _showNotifications(context, state),
+            child: GlassCard(padding: const EdgeInsets.all(10), child: Stack(children: [
+              const Icon(Icons.notifications_none_rounded, color: Colors.white),
+              if (state.notifications.isNotEmpty) Positioned(right: 0, top: 0, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.red, shape: BoxShape.circle))),
+            ])),
+          ),
           const Spacer(),
           Column(children: [
             RichText(text: TextSpan(children: [TextSpan(text: 'Ping ', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.w900)), const TextSpan(text: 'Market', style: TextStyle(color: C.primaryPurple, fontSize: 24, fontWeight: FontWeight.w900))])),
@@ -413,6 +435,21 @@ class HomeTab extends StatelessWidget {
         else if (state.all.isNotEmpty) ...state.all.take(5).toList().asMap().entries.map((e) => StaggeredEntrance(index: e.key + 4, child: _homePriceRow(context, state, e.value))),
       ]),
     ));
+  }
+
+  void _showNotifications(BuildContext context, AppState state) {
+    state.fetchNotifications();
+    showModalBottomSheet(context: context, backgroundColor: C.cardBg, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))), builder: (ctx) {
+      return SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Padding(padding: const EdgeInsets.all(20), child: Text('اعلان‌ها', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+        state.notifications.isEmpty 
+          ? const Padding(padding: EdgeInsets.all(40), child: Text('اعلانی وجود ندارد', style: TextStyle(color: Colors.white54)))
+          : Flexible(child: ListView.builder(shrinkWrap: true, itemCount: state.notifications.length, itemBuilder: (_, i) {
+            final n = state.notifications[i];
+            return ListTile(leading: const Icon(Icons.notifications_active, color: C.gold), title: Text(n.title, style: const TextStyle(color: Colors.white)), subtitle: Text(n.body, style: const TextStyle(color: Colors.white54)));
+          })),
+      ]));
+    });
   }
 
   Widget _buildFeaturedCard(AppState state, MarketAsset asset) {
